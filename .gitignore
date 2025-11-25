@@ -3,6 +3,7 @@ __pycache__/
 *.sqlite3
 .env
 .env.*
+!.env.example
 .venv/
 venv/
 .idea/
@@ -10,6 +11,7 @@ venv/
 .DS_Store
 postgres_data/
 celerybeat-schedule
+logs/
 
 # Docker
 *.pid

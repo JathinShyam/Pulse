@@ -1,8 +1,7 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 
-from .views import NotificationViewSet
+from .views import SendNotificationView
 
-router = DefaultRouter()
-router.register(r'notifications', NotificationViewSet, basename='notification')
-
-urlpatterns = router.urls
+urlpatterns = [
+    path('send/', SendNotificationView.as_view(), name='send-notification'),
+]
