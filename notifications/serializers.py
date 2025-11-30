@@ -9,6 +9,9 @@ class SendNotificationSerializer(serializers.Serializer):
     to = serializers.CharField(max_length=255)
     context = serializers.DictField(child=serializers.CharField(allow_blank=True), default=dict)
     idempotency_key = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    channel = serializers.ChoiceField(choices=[('email', 'Email'), ('sms', 'SMS'), ('push', 'Push')], required=False)
+    device_token = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    title = serializers.CharField(max_length=200, required=False, allow_blank=True)
 
     def validate_template_name(self, value: str) -> str:
         try:

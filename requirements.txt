@@ -4,3 +4,5 @@ psycopg[binary]==3.2.3
 celery==5.4.0
 redis==5.0.8
 dj-database-url==2.2.0
+twilio==9.3.0
+firebase-admin==6.5.0
