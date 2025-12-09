@@ -3,6 +3,7 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
 
 from .models import NotificationLog
 
@@ -38,20 +39,36 @@ def send_email_task(self, log_id: str, to_email: str, subject: str, body: str) -
             recipient_list=[to_email],
             fail_silently=False,
         )
-        log.mark_sent()
+        # Atomic success update
+        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
         logger.info("Email sent successfully to %s (log=%s)", to_email, log_id)
     except Exception as exc:  # pragma: no cover - network/provider specific
+        # Atomic fail/retry
         next_attempt = log.attempts + 1
         retry_delay = 60 * (2**next_attempt)
-        log.mark_retry(str(exc), retry_delay=retry_delay)
-        if log.status == "failed":
+        next_retry = timezone.now() + timezone.timedelta(seconds=retry_delay)
+
+        if next_attempt >= log.max_retries:
+            log.atomic_update_status(
+                "failed",
+                error_message=str(exc),
+                last_attempt_at=timezone.now(),
+                next_retry_at=None,
+            )
             logger.exception(
                 "Email delivery failed permanently for %s (log=%s)",
                 to_email,
                 log_id,
                 exc_info=exc,
             )
-            raise
+            return  # No retry
+
+        log.atomic_update_status(
+            "retrying",
+            error_message=str(exc),
+            last_attempt_at=timezone.now(),
+            next_retry_at=next_retry,
+        )
         logger.warning(
             "Email delivery failed for %s (log=%s). Retrying in %s seconds",
             to_email,
@@ -76,7 +93,8 @@ def send_sms_task(self, log_id: str, to_phone: str, body: str) -> None:
         message = client.messages.create(
             body=body, from_=settings.TWILIO_PHONE_NUMBER, to=to_phone
         )
-        log.mark_sent()
+        # Atomic success update
+        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
         # Store SID in provider_config for tracking
         log.provider_config = {"twilio_sid": str(message.sid)}
         log.save(update_fields=["provider_config"])
@@ -87,17 +105,32 @@ def send_sms_task(self, log_id: str, to_phone: str, body: str) -> None:
             log_id,
         )
     except Exception as exc:
+        # Atomic fail/retry
         next_attempt = log.attempts + 1
         retry_delay = 60 * (2**next_attempt)
-        log.mark_retry(str(exc), retry_delay=retry_delay)
-        if log.status == "failed":
+        next_retry = timezone.now() + timezone.timedelta(seconds=retry_delay)
+
+        if next_attempt >= log.max_retries:
+            log.atomic_update_status(
+                "failed",
+                error_message=str(exc),
+                last_attempt_at=timezone.now(),
+                next_retry_at=None,
+            )
             logger.exception(
                 "SMS delivery failed permanently for %s (log=%s)",
                 to_phone,
                 log_id,
                 exc_info=exc,
             )
-            raise
+            return  # No retry
+
+        log.atomic_update_status(
+            "retrying",
+            error_message=str(exc),
+            last_attempt_at=timezone.now(),
+            next_retry_at=next_retry,
+        )
         logger.warning(
             "SMS delivery failed for %s (log=%s). Retrying in %s seconds",
             to_phone,
@@ -129,19 +162,35 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
         logger.info(
             "Push sent to %s: %s - %s (log=%s)", device_token, title, body, log_id
         )
-        log.mark_sent()
+        # Atomic success update
+        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
     except Exception as exc:
+        # Atomic fail/retry
         next_attempt = log.attempts + 1
         retry_delay = 60 * (2**next_attempt)
-        log.mark_retry(str(exc), retry_delay=retry_delay)
-        if log.status == "failed":
+        next_retry = timezone.now() + timezone.timedelta(seconds=retry_delay)
+
+        if next_attempt >= log.max_retries:
+            log.atomic_update_status(
+                "failed",
+                error_message=str(exc),
+                last_attempt_at=timezone.now(),
+                next_retry_at=None,
+            )
             logger.exception(
                 "Push delivery failed permanently for %s (log=%s)",
                 device_token,
                 log_id,
                 exc_info=exc,
             )
-            raise
+            return  # No retry
+
+        log.atomic_update_status(
+            "retrying",
+            error_message=str(exc),
+            last_attempt_at=timezone.now(),
+            next_retry_at=next_retry,
+        )
         logger.warning(
             "Push delivery failed for %s (log=%s). Retrying in %s seconds",
             device_token,
@@ -149,3 +198,19 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
             retry_delay,
         )
         raise self.retry(exc=exc, countdown=retry_delay)
+
+
+@shared_task
+def cleanup_old_logs(days_old=30):
+    """Archive old notification logs (failed/sent) older than specified days."""
+    from .models import NotificationLog
+
+    cutoff = timezone.now() - timezone.timedelta(days=days_old)
+    old_logs = NotificationLog.objects.filter(
+        status__in=["failed", "sent"], created_at__lt=cutoff
+    )
+    archived_count = old_logs.count()
+    # For now, just delete old logs (in production, you might move to archive table)
+    old_logs.delete()
+    logger.info(f"Cleaned up {archived_count} old logs older than {days_old} days")
+    return archived_count

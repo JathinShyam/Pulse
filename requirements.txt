@@ -6,3 +6,5 @@ redis==5.0.8
 dj-database-url==2.2.0
 twilio==9.3.0
 firebase-admin==6.5.0
+pytest==8.0.0
+pytest-django==4.8.0

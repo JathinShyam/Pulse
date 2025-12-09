@@ -51,13 +51,29 @@ class SendNotificationView(APIView):
         idem_key = data.get("idempotency_key") or None
         channel = data.get("channel", template.channel)
 
-        log = NotificationLog.objects.create(
+        # Use atomic create for idempotency
+        log = NotificationLog.create_if_not_exists(
             user_id=data["user_id"],
             template=template,
             channel=channel,
             to=data["to"],
             idempotency_key=idem_key,
+            max_retries=5,  # Default
         )
+
+        # Check if this was an existing log (idempotent request)
+        # The serializer already checks, but create_if_not_exists handles race conditions
+        if idem_key and existing and existing.id == log.id:
+            # This is a duplicate request
+            logger.info(
+                "Idempotent hit for notification %s (status=%s)",
+                log.id,
+                log.status,
+            )
+            return Response(
+                {"notification_id": str(log.id), "status": log.status},
+                status=status.HTTP_200_OK,
+            )
 
         adapters = {
             "email": EmailAdapter(),
@@ -85,6 +101,8 @@ class SendNotificationView(APIView):
                     log.id,
                     exc_info=e,
                 )
+                # Log the error immediately with atomic update
+                log.atomic_update_status("failed", error_message=str(e), next_retry_at=None)
                 return Response(
                     {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
@@ -94,6 +112,7 @@ class SendNotificationView(APIView):
                 channel,
                 log.id,
             )
+            log.atomic_update_status("failed", error_message="Unsupported channel")
             return Response(
                 {"error": "Unsupported channel"}, status=status.HTTP_400_BAD_REQUEST
             )

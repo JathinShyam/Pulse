@@ -1,7 +1,8 @@
 import uuid
 from datetime import timedelta
 
-from django.db import models
+from django.db import models, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
 
@@ -53,9 +54,16 @@ class NotificationLog(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["idempotency_key"]),
-            models.Index(fields=["status"]),
-            models.Index(fields=["next_retry_at"]),
+            models.Index(fields=["idempotency_key"]),  # Fast lookup
+            models.Index(fields=["status", "next_retry_at"]),  # Queue scanning
+            models.Index(fields=["user_id", "created_at"]),  # User history
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["idempotency_key"],
+                condition=Q(idempotency_key__isnull=False),
+                name="unique_idempotency",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -84,3 +92,38 @@ class NotificationLog(models.Model):
         self.sent_at = timezone.now()
         self.last_attempt_at = self.sent_at
         self.save(update_fields=["status", "sent_at", "last_attempt_at"])
+
+    @classmethod
+    def create_if_not_exists(cls, **kwargs):
+        """Atomic create with idempotency check."""
+        with transaction.atomic():
+            idempotency_key = kwargs.get("idempotency_key")
+            if idempotency_key:
+                existing, created = cls.objects.get_or_create(
+                    idempotency_key=idempotency_key, defaults=kwargs
+                )
+                if not created:
+                    return existing  # Already processed
+                return existing
+            else:
+                obj = cls(**kwargs)
+                obj.save()
+                return obj
+
+    def atomic_update_status(self, status, **extra):
+        """Concurrency-safe update (e.g., for retries)."""
+        with transaction.atomic():
+            update_kwargs = {"status": status, **extra}
+            if status == "retrying":
+                update_kwargs["attempts"] = F("attempts") + 1
+
+            # Only update if still pending (prevents race conditions)
+            updated = (
+                self.__class__.objects.filter(id=self.id, status="pending")
+                .update(**update_kwargs)
+            )
+            if updated == 0 and status != "pending":
+                # If not pending, update anyway (for retry/fail transitions)
+                self.__class__.objects.filter(id=self.id).update(**update_kwargs)
+
+            self.refresh_from_db()  # Reload for latest
