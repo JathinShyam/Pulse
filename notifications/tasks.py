@@ -40,7 +40,9 @@ def send_email_task(self, log_id: str, to_email: str, subject: str, body: str) -
             fail_silently=False,
         )
         # Atomic success update
-        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
+        log.atomic_update_status(
+            "sent", sent_at=timezone.now(), last_attempt_at=timezone.now()
+        )
         logger.info("Email sent successfully to %s (log=%s)", to_email, log_id)
     except Exception as exc:  # pragma: no cover - network/provider specific
         # Atomic fail/retry
@@ -94,7 +96,9 @@ def send_sms_task(self, log_id: str, to_phone: str, body: str) -> None:
             body=body, from_=settings.TWILIO_PHONE_NUMBER, to=to_phone
         )
         # Atomic success update
-        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
+        log.atomic_update_status(
+            "sent", sent_at=timezone.now(), last_attempt_at=timezone.now()
+        )
         # Store SID in provider_config for tracking
         log.provider_config = {"twilio_sid": str(message.sid)}
         log.save(update_fields=["provider_config"])
@@ -163,7 +167,9 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
             "Push sent to %s: %s - %s (log=%s)", device_token, title, body, log_id
         )
         # Atomic success update
-        log.atomic_update_status("sent", sent_at=timezone.now(), last_attempt_at=timezone.now())
+        log.atomic_update_status(
+            "sent", sent_at=timezone.now(), last_attempt_at=timezone.now()
+        )
     except Exception as exc:
         # Atomic fail/retry
         next_attempt = log.attempts + 1
@@ -200,7 +206,7 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
         raise self.retry(exc=exc, countdown=retry_delay)
 
 
-@shared_task
+@shared_task(queue="low_priority")
 def cleanup_old_logs(days_old=30):
     """Archive old notification logs (failed/sent) older than specified days."""
     from .models import NotificationLog
@@ -214,3 +220,26 @@ def cleanup_old_logs(days_old=30):
     old_logs.delete()
     logger.info(f"Cleaned up {archived_count} old logs older than {days_old} days")
     return archived_count
+
+
+@shared_task(queue="low_priority")
+def send_daily_digest():
+    """
+    Sample recurring task to show how Celery Beat integrates with the app.
+
+    For now this is intentionally simple and primarily logs activity, but it
+    can be extended to aggregate per-user notification stats and send
+    summary emails/SMS.
+    """
+    seven_days_ago = timezone.now() - timezone.timedelta(days=7)
+    quiet_users = (
+        NotificationLog.objects.filter(created_at__lt=seven_days_ago)
+        .values_list("user_id", flat=True)
+        .distinct()[:50]
+    )
+    count = len(quiet_users)
+    if count:
+        logger.info("send_daily_digest would run for %s users", count)
+    else:
+        logger.info("send_daily_digest found no quiet users to notify")
+    return count

@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from .adapters import EmailAdapter, PushAdapter, SMSAdapter
 from .models import NotificationLog, NotificationTemplate
+from .rate_limiter import RateLimiter
 from .serializers import SendNotificationSerializer
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,25 @@ class SendNotificationView(APIView):
         idem_key = data.get("idempotency_key") or None
         channel = data.get("channel", template.channel)
 
+        # Per-user/channel rate limiting
+        limiter = RateLimiter(max_requests=10, window=60)  # 10 requests/minute
+        rate_key = f"{data['user_id']}:{channel}"
+        if not limiter.is_allowed(rate_key):
+            logger.warning(
+                "Rate limit exceeded for user=%s channel=%s", data["user_id"], channel
+            )
+            response = Response(
+                {"error": "Rate limit exceeded. Try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+            self._log_response(
+                request,
+                started_at,
+                response.status_code,
+                extra={"user_id": data['user_id'], "channel": channel},
+            )
+            return response
+
         # Use atomic create for idempotency
         log = NotificationLog.create_if_not_exists(
             user_id=data["user_id"],
@@ -81,6 +101,13 @@ class SendNotificationView(APIView):
             "push": PushAdapter(),
         }
 
+        # Basic priority routing: treat OTP-like templates as high priority
+        template_name = (template.name or "").lower()
+        if "otp" in template_name:
+            queue_name = "high_priority"
+        else:
+            queue_name = "low_priority"
+
         if channel in adapters:
             adapter = adapters[channel]
             payload = {
@@ -91,6 +118,7 @@ class SendNotificationView(APIView):
                 "title": data.get("title", template.subject)
                 if channel == "push"
                 else None,
+                "queue": queue_name,
             }
             try:
                 adapter.send(str(log.id), payload)

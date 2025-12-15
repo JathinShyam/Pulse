@@ -23,6 +23,13 @@ With the stack running:
 - Notifications endpoint: `POST http://localhost:8000/api/notifications/`
 - Celery worker logs: `docker-compose logs -f celery`
 
+To include Celery Beat, priority workers, and Flower:
+
+```bash
+docker-compose build web celery celery-beat celery-high celery-low
+docker-compose up -d web celery celery-beat celery-high celery-low flower
+```
+
 Example request body:
 
 ```json
@@ -47,8 +54,66 @@ Example request body:
 | 7 | Horizontal scaling proof + load testing |
 | 8 | Docs, demo video, blog posts |
 
-## Next Steps
+## Rate Limiting
 
-1. Resolve container networking hiccups preventing pip from reaching PyPI during image builds.
-2. Generate initial migrations and wire Celery Beat for scheduled jobs.
-3. Implement provider adapters (SMTP, Twilio, Firebase) with secrets in `.env`.
+Pulse enforces simple, Redis-backed per-user/channel rate limits on the main
+send endpoint. By default, each `(user_id, channel)` pair is limited to
+**10 requests per 60-second window**. Exceeding this returns HTTP `429` with
+`{"error": "Rate limit exceeded. Try again later."}`.
+
+Implementation details:
+
+- **Store** – Uses the existing Celery Redis broker (`CELERY_BROKER_URL`) for counters.
+- **Granularity** – Fixed-time windows keyed as `rate_limit:{user_id}:{channel}`.
+- **Integration** – Applied in `SendNotificationView` before a `NotificationLog`
+  is created, so abusive callers never hit the DB write path.
+
+You can tune `max_requests` and `window` in `notifications/rate_limiter.py` or
+swap in a different strategy (sliding window/token bucket) while keeping the
+same call-site in the view.
+
+## Priority Queues
+
+Celery workers are split into **high** and **low** priority queues:
+
+- High-priority queue: `high_priority` (e.g., OTP / time-sensitive alerts).
+- Low-priority queue: `low_priority` (e.g., newsletters, digests).
+
+Routing rules:
+
+- Templates whose name contains `"otp"` (case-insensitive) are routed to
+  `high_priority`.
+- All other notifications default to `low_priority`.
+
+Under load, you can scale workers independently, e.g.:
+
+```bash
+docker-compose up -d --scale celery-high=3 --scale celery-low=1
+```
+
+## Scheduling (Celery Beat)
+
+Pulse uses the built-in **Celery Beat** scheduler with a code-defined schedule:
+
+- `cleanup_old_logs` runs daily at 02:00 to delete old `NotificationLog` rows
+  in `sent`/`failed` states (default: older than 30 days).
+- `send_daily_digest` is a sample recurring task that scans for “quiet” users
+  over the past 7 days and logs how many would receive a digest.
+
+These schedules are configured via `CELERY_BEAT_SCHEDULE` in `pulse/settings.py`
+and are loaded directly by the Beat process at startup.
+
+## Quick Test Checklist
+
+1. **Migrations & services**
+   - `docker-compose exec web python manage.py migrate`
+   - `docker-compose up -d web celery celery-beat celery-high celery-low`
+2. **High-priority OTP**
+   - POST a notification with `template_name` containing `"otp"` and `channel="sms"`.
+   - Verify it lands on the `high_priority` queue in `celery-high` logs.
+3. **Rate limit**
+   - Send >10 requests within 60s for the same `user_id` + `channel`.
+   - Confirm the 11th (and subsequent) requests return HTTP 429.
+4. **Scheduling**
+   - Tail Beat logs: `docker-compose logs -f celery-beat`.
+   - Manually trigger: `docker-compose exec web celery -A pulse call notifications.tasks.send_daily_digest`.
