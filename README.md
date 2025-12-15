@@ -10,6 +10,20 @@ Pulse is a scalable notification and background job orchestration system built w
 - **Database (PostgreSQL)** – Stores notification state, idempotency keys, audit history, and routing metadata.
 - **Observability** – Future work includes a metrics dashboard (Streamlit/Next.js) plus Prometheus exporters.
 
+## API Documentation
+
+When `ENABLE_DOCS=true` (default), interactive API documentation is available:
+
+| URL                               | Description                                  |
+| --------------------------------- | -------------------------------------------- |
+| http://localhost:8000/api/docs/   | **Swagger UI** - Interactive API explorer    |
+| http://localhost:8000/api/redoc/  | **ReDoc** - Alternative documentation viewer |
+| http://localhost:8000/api/schema/ | **OpenAPI 3.0 schema** (JSON/YAML download)  |
+
+Markdown documentation for each endpoint is also available in `notifications/docs/`.
+
+To disable documentation in production, set `ENABLE_DOCS=false` in your `.env` file.
+
 ## Local Development
 
 ```bash
@@ -20,7 +34,9 @@ docker-compose up -d
 With the stack running:
 
 - Django API: http://localhost:8000
-- Notifications endpoint: `POST http://localhost:8000/api/notifications/`
+- **Swagger UI**: http://localhost:8000/api/docs/
+- **ReDoc**: http://localhost:8000/api/redoc/
+- Notifications endpoint: `POST http://localhost:8000/api/notifications/send/`
 - Celery worker logs: `docker-compose logs -f celery`
 
 To include Celery Beat, priority workers, and Flower:
@@ -36,23 +52,23 @@ Example request body:
 {
   "recipient": "someone@example.com",
   "channel": "email",
-  "payload": {"subject": "Hello", "body": "Welcome to Pulse"},
+  "payload": { "subject": "Hello", "body": "Welcome to Pulse" },
   "priority": 1
 }
 ```
 
 ## Roadmap
 
-| Week | Focus |
-| --- | --- |
-| 1 | Core Django + Celery setup, basic email notification task |
-| 2 | Multi-channel abstraction (SMS, Push, WhatsApp) |
-| 3 | Retry policies, exponential backoff, DLQ |
-| 4 | Idempotency keys + relational schema hardening |
-| 5 | Rate limiting, priority queues, scheduling/cron |
-| 6 | Observability dashboard + metrics exporters |
-| 7 | Horizontal scaling proof + load testing |
-| 8 | Docs, demo video, blog posts |
+| Week | Focus                                                     |
+| ---- | --------------------------------------------------------- |
+| 1    | Core Django + Celery setup, basic email notification task |
+| 2    | Multi-channel abstraction (SMS, Push, WhatsApp)           |
+| 3    | Retry policies, exponential backoff, DLQ                  |
+| 4    | Idempotency keys + relational schema hardening            |
+| 5    | Rate limiting, priority queues, scheduling/cron           |
+| 6    | Observability dashboard + metrics exporters               |
+| 7    | Horizontal scaling proof + load testing                   |
+| 8    | Docs, demo video, blog posts                              |
 
 ## Rate Limiting
 

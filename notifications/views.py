@@ -1,6 +1,7 @@
 import logging
 import time
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,15 +9,64 @@ from rest_framework.views import APIView
 from .adapters import EmailAdapter, PushAdapter, SMSAdapter
 from .models import NotificationLog, NotificationTemplate
 from .rate_limiter import RateLimiter
-from .serializers import SendNotificationSerializer
+from .serializers import (
+    ErrorResponseSerializer,
+    NotificationIdempotentResponseSerializer,
+    NotificationListResponseSerializer,
+    NotificationQueuedResponseSerializer,
+    NotificationStatusResponseSerializer,
+    SendNotificationSerializer,
+    TemplateListResponseSerializer,
+    TemplateSerializer,
+)
+
+# Conditional import for OpenAPI decorators
+if settings.ENABLE_DOCS:
+    from drf_spectacular.utils import (
+        OpenApiExample,
+        OpenApiParameter,
+        OpenApiResponse,
+        extend_schema,
+    )
+else:
+    # No-op decorator when docs are disabled
+    def extend_schema(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+    OpenApiParameter = None
+    OpenApiExample = None
+    OpenApiResponse = None
 
 logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("pulse.access")
 
 
 class SendNotificationView(APIView):
+    """
+    Queue a notification for delivery via email, SMS, or push.
+
+    Supports idempotency keys for exactly-once semantics and automatic
+    priority routing based on template type (OTP templates → high priority).
+    """
+
     serializer_class = SendNotificationSerializer
 
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Send a notification",
+        description="Queue a notification for asynchronous delivery. "
+        "Supports email, SMS, and push channels with idempotency and rate limiting.",
+        request=SendNotificationSerializer,
+        responses={
+            202: NotificationQueuedResponseSerializer,
+            200: NotificationIdempotentResponseSerializer,
+            400: ErrorResponseSerializer,
+            429: ErrorResponseSerializer,
+            500: ErrorResponseSerializer,
+        },
+    )
     def post(self, request):
         started_at = time.monotonic()
         serializer = self.serializer_class(data=request.data)
@@ -175,8 +225,17 @@ class SendNotificationView(APIView):
 
 
 class NotificationStatusView(APIView):
-    """Get notification status by ID"""
+    """Get notification status by ID."""
 
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Get notification status",
+        description="Retrieve the current status and metadata of a specific notification by its UUID.",
+        responses={
+            200: NotificationStatusResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
     def get(self, request, notification_id):
         try:
             log = NotificationLog.objects.get(id=notification_id)
@@ -211,8 +270,47 @@ class NotificationStatusView(APIView):
 
 
 class NotificationListView(APIView):
-    """List all notifications with optional filters"""
+    """List all notifications with optional filters."""
 
+    @extend_schema(
+        tags=["Notifications"],
+        summary="List notifications",
+        description="List all notifications with optional filtering by user, channel, and status. "
+        "Results are ordered by creation time (newest first).",
+        parameters=[
+            OpenApiParameter(
+                name="user_id",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter by user identifier",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="channel",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter by channel (email, sms, push)",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="status",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter by status (pending, sent, failed, retrying)",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="limit",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Maximum number of results (default: 50)",
+                required=False,
+            ),
+        ]
+        if OpenApiParameter
+        else [],
+        responses={200: NotificationListResponseSerializer},
+    )
     def get(self, request):
         logs = NotificationLog.objects.all().order_by("-created_at")
 
@@ -254,8 +352,26 @@ class NotificationListView(APIView):
 
 
 class TemplateListView(APIView):
-    """List all notification templates"""
+    """List all notification templates."""
 
+    @extend_schema(
+        tags=["Templates"],
+        summary="List templates",
+        description="List all notification templates with optional filtering by channel. "
+        "Results are ordered by creation time (newest first).",
+        parameters=[
+            OpenApiParameter(
+                name="channel",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter by channel (email, sms, push, whatsapp, in_app)",
+                required=False,
+            ),
+        ]
+        if OpenApiParameter
+        else [],
+        responses={200: TemplateListResponseSerializer},
+    )
     def get(self, request):
         templates = NotificationTemplate.objects.all().order_by("-created_at")
         channel_filter = request.query_params.get("channel")
@@ -283,8 +399,17 @@ class TemplateListView(APIView):
 
 
 class TemplateDetailView(APIView):
-    """Get template details by UUID"""
+    """Get template details by UUID."""
 
+    @extend_schema(
+        tags=["Templates"],
+        summary="Get template details",
+        description="Retrieve the full details of a specific notification template by its UUID.",
+        responses={
+            200: TemplateSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
     def get(self, request, template_id):
         try:
             template = NotificationTemplate.objects.get(id=template_id)

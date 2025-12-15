@@ -33,6 +33,9 @@ DEBUG = os.environ.get("DEBUG", "True").lower() in {"1", "true", "yes"}
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
+# API Documentation
+ENABLE_DOCS = os.environ.get("ENABLE_DOCS", "True").lower() in {"1", "true", "yes"}
+
 
 # Application definition
 
@@ -46,6 +49,11 @@ INSTALLED_APPS = [
     "rest_framework",
     "notifications",
 ]
+
+# Conditionally add drf-spectacular for API docs
+if ENABLE_DOCS:
+    INSTALLED_APPS.append("drf_spectacular")
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -140,6 +148,34 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+}
+
+
+# Add schema class if docs are enabled
+if ENABLE_DOCS:
+    REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"] = "drf_spectacular.openapi.AutoSchema"
+
+# drf-spectacular settings for OpenAPI/Swagger
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Pulse Notification API",
+    "DESCRIPTION": "A scalable notification and background job orchestration system. "
+    "Supports multi-channel delivery (email, SMS, push), retries with exponential backoff, "
+    "idempotency keys, rate limiting, and priority queues.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CONTACT": {
+        "name": "Pulse API Support",
+        "email": "pulse@shyamk.red",
+    },
+    "LICENSE": {
+        "name": "MIT",
+    },
+    "TAGS": [
+        {"name": "Notifications", "description": "Send and manage notifications"},
+        {"name": "Templates", "description": "Notification template management"},
+    ],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/",
 }
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
