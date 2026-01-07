@@ -10,3 +10,11 @@ pytest==8.0.0
 pytest-django==4.8.0
 flower==2.0.1
 drf-spectacular==0.27.2
+
+# Observability Dashboard
+streamlit==1.38.0
+prometheus-client==0.20.0
+sqlalchemy==2.0.35
+pandas==2.2.3
+matplotlib==3.9.2
+psycopg2-binary==2.9.9
