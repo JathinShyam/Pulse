@@ -1,0 +1,72 @@
+# Prometheus Metrics Exporter
+# Exposes /metrics for Prometheus scraping
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics
+  namespace: pulse
+  labels:
+    app: pulse
+    component: metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pulse
+      component: metrics
+  template:
+    metadata:
+      labels:
+        app: pulse
+        component: metrics
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: metrics
+          image: pulse:latest  # Replace with your registry image
+          command: ["python", "dashboard/metrics.py"]
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: pulse-config
+            - secretRef:
+                name: pulse-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres-service:5432/pulse"
+            - name: METRICS_PORT
+              value: "8001"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-service
+  namespace: pulse
+  labels:
+    app: pulse
+    component: metrics
+spec:
+  selector:
+    app: pulse
+    component: metrics
+  ports:
+    - port: 8001
+      targetPort: 8001
+  type: ClusterIP

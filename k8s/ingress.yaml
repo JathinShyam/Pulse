@@ -1,0 +1,83 @@
+# Ingress Configuration
+# Routes external traffic to Pulse services
+# Requires an Ingress Controller (nginx-ingress, traefik, etc.)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pulse-ingress
+  namespace: pulse
+  labels:
+    app: pulse
+  annotations:
+    # For nginx-ingress
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Enable rate limiting at ingress level
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    # For cert-manager TLS (optional)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  # Uncomment for TLS
+  # tls:
+  #   - hosts:
+  #       - pulse.example.com
+  #     secretName: pulse-tls
+  rules:
+    - host: pulse.example.com  # Replace with your domain
+      http:
+        paths:
+          # API endpoints
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: pulse-web-service
+                port:
+                  number: 80
+          # Admin panel
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: pulse-web-service
+                port:
+                  number: 80
+          # Prometheus metrics (consider restricting access)
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: metrics-service
+                port:
+                  number: 8001
+---
+# Separate ingress for internal tools (Flower, Dashboard)
+# Consider using NetworkPolicy to restrict access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pulse-internal-ingress
+  namespace: pulse
+  labels:
+    app: pulse
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Add authentication for internal tools
+    # nginx.ingress.kubernetes.io/auth-type: basic
+    # nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    # nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+spec:
+  rules:
+    - host: pulse-internal.example.com  # Replace with your internal domain
+      http:
+        paths:
+          - path: /flower
+            pathType: Prefix
+            backend:
+              service:
+                name: flower-service
+                port:
+                  number: 5555

@@ -91,6 +91,7 @@ With the stack running:
 | **Flower**        | http://localhost:5555                | Celery task monitor       |
 | **Dashboard**     | http://localhost:8501                | Streamlit metrics UI      |
 | **Metrics**       | http://localhost:8001/metrics        | Prometheus exporter       |
+| **Locust**        | http://localhost:8089                | Load testing UI           |
 | Mailpit           | http://localhost:8025                | Email testing UI          |
 
 Celery worker logs: `docker-compose logs -f celery`
@@ -230,6 +231,85 @@ Pulse uses the built-in **Celery Beat** scheduler with a code-defined schedule:
 These schedules are configured via `CELERY_BEAT_SCHEDULE` in `pulse/settings.py`
 and are loaded directly by the Beat process at startup.
 
+## Scaling & Load Testing
+
+Pulse is designed for horizontal scaling and has been load-tested to handle **10K-15K+ notifications/minute**.
+
+### Scaling Workers
+
+Scale Celery workers dynamically:
+
+```bash
+# Scale high-priority workers (for OTP, time-sensitive)
+docker-compose up -d --scale celery-high=4 --scale celery-low=2
+
+# Or use pre-defined scaled workers (requires --profile scale)
+docker-compose --profile scale up -d
+```
+
+### Load Testing with Locust
+
+Pulse includes a Locust load testing suite to validate throughput and reliability.
+
+```bash
+# Start Locust via Docker Compose
+docker-compose up -d locust
+
+# Open Locust UI
+open http://localhost:8089
+```
+
+**Recommended test settings:**
+- Users: 100-200
+- Spawn rate: 10-20 users/sec
+- Duration: 5-10 minutes
+
+**Test scenarios included:**
+- Standard notification sends (weighted 10x)
+- High-priority OTP notifications (weighted 5x)
+- Status checks (weighted 2x)
+- List notifications (weighted 1x)
+
+**Expected results:**
+- Throughput: 10K-15K requests/min with 4 high-priority workers
+- Success rate: >99% under normal load
+- p95 latency: <500ms for API response
+
+```bash
+# Run Locust locally (alternative)
+pip install locust
+locust -f locustfile.py --host http://localhost:8000
+```
+
+### Kubernetes Deployment
+
+For production-scale deployments, see `k8s/` directory:
+
+```bash
+# Deploy to Kubernetes
+kubectl apply -k k8s/
+
+# Watch auto-scaling
+kubectl get hpa -n pulse -w
+```
+
+Features:
+- HorizontalPodAutoscaler for web and workers
+- High-priority workers: 2-20 replicas (60% CPU target)
+- Low-priority workers: 1-10 replicas (70% CPU target)
+- Web API: 2-10 replicas (70% CPU target)
+
+See `k8s/README.md` for detailed deployment guide.
+
+### Monitoring Under Load
+
+| Tool | URL | Purpose |
+|------|-----|---------|
+| Flower | http://localhost:5555 | Worker status, queue depths |
+| Metrics | http://localhost:8001/metrics | Prometheus metrics |
+| Dashboard | http://localhost:8501 | Real-time graphs |
+| Locust | http://localhost:8089 | Load test results |
+
 ## Quick Test Checklist
 
 1. **Migrations & services**
@@ -244,3 +324,7 @@ and are loaded directly by the Beat process at startup.
 4. **Scheduling**
    - Tail Beat logs: `docker-compose logs -f celery-beat`.
    - Manually trigger: `docker-compose exec web celery -A pulse call notifications.tasks.send_daily_digest`.
+5. **Load testing**
+   - Start Locust: `docker-compose up -d locust`
+   - Open http://localhost:8089, run 100 users for 5 minutes
+   - Target: >99% success rate, <500ms p95 latency

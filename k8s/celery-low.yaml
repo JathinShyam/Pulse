@@ -1,0 +1,108 @@
+# Celery Low Priority Workers
+# Processes newsletters, digests, non-urgent notifications
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-low
+  namespace: pulse
+  labels:
+    app: pulse
+    component: celery-low
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pulse
+      component: celery-low
+  template:
+    metadata:
+      labels:
+        app: pulse
+        component: celery-low
+    spec:
+      containers:
+        - name: celery-low
+          image: pulse:latest  # Replace with your registry image
+          command:
+            - celery
+            - -A
+            - pulse
+            - worker
+            - -l
+            - info
+            - -Q
+            - low_priority
+            - --concurrency=2
+            - -n
+            - low-worker@%h
+          envFrom:
+            - configMapRef:
+                name: pulse-config
+            - secretRef:
+                name: pulse-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres-service:5432/pulse"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - pulse
+                - inspect
+                - ping
+                - -d
+                - celery@$HOSTNAME
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 30
+---
+# HorizontalPodAutoscaler for Low Priority Workers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: celery-low-hpa
+  namespace: pulse
+  labels:
+    app: pulse
+    component: celery-low
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: celery-low
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Percent
+          value: 20
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30

@@ -1,0 +1,9 @@
+# Pulse Namespace
+# Creates an isolated namespace for all Pulse resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pulse
+  labels:
+    app: pulse
+    environment: production

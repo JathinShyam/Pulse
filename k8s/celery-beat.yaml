@@ -1,0 +1,50 @@
+# Celery Beat Scheduler
+# Handles scheduled tasks (cleanup, digests, etc.)
+# NOTE: Only ONE Beat instance should run at a time (singleton)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: pulse
+  labels:
+    app: pulse
+    component: celery-beat
+spec:
+  replicas: 1  # MUST be 1 - Beat is a singleton
+  strategy:
+    type: Recreate  # Ensure only one instance runs
+  selector:
+    matchLabels:
+      app: pulse
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: pulse
+        component: celery-beat
+    spec:
+      containers:
+        - name: celery-beat
+          image: pulse:latest  # Replace with your registry image
+          command:
+            - celery
+            - -A
+            - pulse
+            - beat
+            - -l
+            - info
+          envFrom:
+            - configMapRef:
+                name: pulse-config
+            - secretRef:
+                name: pulse-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres-service:5432/pulse"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"

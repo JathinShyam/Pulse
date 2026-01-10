@@ -1,0 +1,28 @@
+# Pulse ConfigMap
+# Non-sensitive configuration for all Pulse components
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pulse-config
+  namespace: pulse
+  labels:
+    app: pulse
+data:
+  DEBUG: "false"
+  ALLOWED_HOSTS: "*"
+  ENABLE_DOCS: "true"
+  
+  # Database (host only - credentials in secrets)
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "pulse"
+  
+  # Redis/Celery
+  CELERY_BROKER_URL: "redis://redis-service:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
+  
+  # Email (defaults - override in secrets for production)
+  EMAIL_HOST: "smtp.mailtrap.io"
+  EMAIL_PORT: "2525"
+  EMAIL_USE_TLS: "true"
+  DEFAULT_FROM_EMAIL: "pulse@example.com"
