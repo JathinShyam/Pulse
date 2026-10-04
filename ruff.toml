@@ -7,4 +7,7 @@ select = [
     "C",  # flake8-comprehensions
     "B",  # flake8-bugbear
 ]
-ignore = []
+ignore = [
+    "E501",  # Line too long
+    "C901",  # Too complex
+]

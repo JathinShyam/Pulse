@@ -104,7 +104,7 @@ def deliver(task, log_id: str, channel: str, send) -> None:
             exc,
             delay,
         )
-        raise task.retry(exc=exc, countdown=delay, max_retries=log.max_retries)
+        raise task.retry(exc=exc, countdown=delay, max_retries=log.max_retries) from exc
 
     now = timezone.now()
     log.atomic_update_status(

@@ -28,7 +28,7 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap');
-    
+
     :root {
         --bg-primary: #0f0f0f;
         --bg-secondary: #1a1a1a;
@@ -41,11 +41,11 @@ st.markdown(
         --text-primary: #ffffff;
         --text-secondary: #888888;
     }
-    
+
     .stApp {
         background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
     }
-    
+
     .main-header {
         font-family: 'Outfit', sans-serif;
         font-size: 2.8rem;
@@ -56,14 +56,14 @@ st.markdown(
         background-clip: text;
         margin-bottom: 0.5rem;
     }
-    
+
     .sub-header {
         font-family: 'Outfit', sans-serif;
         color: var(--text-secondary);
         font-size: 1.1rem;
         margin-bottom: 2rem;
     }
-    
+
     .metric-card {
         background: var(--bg-card);
         border-radius: 16px;
@@ -71,14 +71,14 @@ st.markdown(
         border: 1px solid rgba(255,255,255,0.05);
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
-    
+
     .metric-value {
         font-family: 'JetBrains Mono', monospace;
         font-size: 2.5rem;
         font-weight: 700;
         color: var(--accent-cyan);
     }
-    
+
     .metric-label {
         font-family: 'Outfit', sans-serif;
         color: var(--text-secondary);
@@ -86,7 +86,7 @@ st.markdown(
         text-transform: uppercase;
         letter-spacing: 1px;
     }
-    
+
     .section-header {
         font-family: 'Outfit', sans-serif;
         font-size: 1.4rem;
@@ -97,16 +97,16 @@ st.markdown(
         padding-bottom: 0.5rem;
         border-bottom: 2px solid var(--accent-cyan);
     }
-    
+
     .status-sent { color: var(--accent-green); }
     .status-failed { color: var(--accent-red); }
     .status-retrying { color: var(--accent-yellow); }
     .status-pending { color: var(--accent-cyan); }
-    
+
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
+
     /* Style dataframes */
     .stDataFrame {
         background: var(--bg-card);
@@ -185,7 +185,7 @@ def get_hourly_trends(engine, hours: int = 24) -> pd.DataFrame:
     """Get hourly notification trends."""
     query = text(
         """
-        SELECT 
+        SELECT
             DATE_TRUNC('hour', created_at) as hour,
             status,
             COUNT(*) as count
@@ -207,7 +207,7 @@ def get_retry_stats(engine, hours: int = 24) -> pd.DataFrame:
     """Get retry attempt statistics."""
     query = text(
         """
-        SELECT 
+        SELECT
             DATE_TRUNC('hour', created_at) as hour,
             AVG(attempts) as avg_attempts,
             MAX(attempts) as max_attempts,
@@ -230,7 +230,7 @@ def get_failure_rates(engine, days: int = 7) -> pd.DataFrame:
     """Get failure rates by channel."""
     query = text(
         """
-        SELECT 
+        SELECT
             channel,
             COUNT(*) as total,
             COUNT(*) FILTER (WHERE status = 'failed') as failed,
@@ -256,7 +256,7 @@ def get_summary_metrics(engine) -> dict:
     """Get overall summary metrics."""
     query = text(
         """
-        SELECT 
+        SELECT
             COUNT(*) as total,
             COUNT(*) FILTER (WHERE status = 'sent') as sent,
             COUNT(*) FILTER (WHERE status = 'failed') as failed,
@@ -292,7 +292,7 @@ def get_recent_notifications(engine, limit: int = 10) -> pd.DataFrame:
     """Get recent notifications."""
     query = text(
         f"""
-        SELECT 
+        SELECT
             id,
             channel,
             "to" as recipient,
@@ -627,7 +627,7 @@ def main():
     st.markdown(
         f"""
         <div style="text-align: center; color: #888888; font-size: 0.8rem;">
-            Pulse Dashboard • Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} • 
+            Pulse Dashboard • Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} •
             <a href="http://localhost:5555" style="color: #00d4ff;">Flower</a> •
             <a href="http://localhost:8000/api/docs/" style="color: #00d4ff;">API Docs</a>
         </div>

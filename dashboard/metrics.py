@@ -135,7 +135,7 @@ def collect_notification_metrics(engine):
     # Failure rates by channel (last 24h)
     failure_query = text(
         """
-        SELECT 
+        SELECT
             channel,
             ROUND(
                 COUNT(*) FILTER (WHERE status = 'failed') * 100.0 / NULLIF(COUNT(*), 0), 2
@@ -175,12 +175,12 @@ def collect_notification_metrics(engine):
     # Delivery latency for recently sent notifications
     latency_query = text(
         """
-        SELECT 
+        SELECT
             channel,
             EXTRACT(EPOCH FROM (sent_at - created_at)) as latency
         FROM notifications_notificationlog
-        WHERE status = 'sent' 
-            AND sent_at IS NOT NULL 
+        WHERE status = 'sent'
+            AND sent_at IS NOT NULL
             AND created_at > NOW() - INTERVAL '1 HOUR'
     """
     )
