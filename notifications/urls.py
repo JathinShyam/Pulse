@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .metrics_view import MetricsView
 from .views import (
     NotificationListView,
     NotificationStatusView,
@@ -22,4 +23,5 @@ urlpatterns = [
         TemplateDetailView.as_view(),
         name="template-detail",
     ),
+    path("metrics/", MetricsView.as_view(), name="metrics"),
 ]
