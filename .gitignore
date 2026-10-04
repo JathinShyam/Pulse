@@ -12,6 +12,10 @@ venv/
 postgres_data/
 celerybeat-schedule
 logs/
+.history/
+.pytest_cache/
+.ruff_cache/
+.venv/
 
 # Docker
 *.pid

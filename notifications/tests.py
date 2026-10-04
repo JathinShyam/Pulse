@@ -101,9 +101,8 @@ class IdempotencyTest(TestCase):
         log.atomic_update_status("retrying", error_message="Test error")
         log.refresh_from_db()
 
-        # Should not update attempts if not pending
-        # But should still update status if explicitly set
-        self.assertEqual(log.status, "retrying")
+        # Should not update attempts or status since it's already terminal ('sent')
+        self.assertEqual(log.status, "sent")
 
 
 class IdempotencyAPITest(TestCase):
@@ -118,6 +117,11 @@ class IdempotencyAPITest(TestCase):
             body_template="Hello {name}!",
         )
         self.client = APIClient()
+        from django.conf import settings
+
+        settings.PULSE_API_KEYS = ["test_key"]
+        settings.CELERY_TASK_ALWAYS_EAGER = True
+        self.client.credentials(HTTP_AUTHORIZATION="Api-Key test_key")
 
     def test_duplicate_api_request_with_idempotency_key(self):
         """Test that duplicate API requests with same idempotency key return existing notification"""
