@@ -1,6 +1,41 @@
+import re
+
+from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import EmailValidator
 from rest_framework import serializers
 
 from .models import NotificationLog, NotificationTemplate
+
+SUPPORTED_CHANNELS = ("email", "sms", "push")
+E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
+_email_validator = EmailValidator()
+
+
+def render_template(text: str, context: dict, field: str) -> str:
+    """Render a str.format template, turning author/caller mistakes into 400s."""
+    try:
+        return text.format(**context)
+    except KeyError as exc:
+        raise serializers.ValidationError(
+            {"context": f"missing template variable: {exc}"}
+        ) from exc
+    except (IndexError, ValueError, AttributeError) as exc:
+        raise serializers.ValidationError(
+            {"template_name": f"template {field} is malformed: {exc}"}
+        ) from exc
+
+
+def resolve_queue(template_name: str, priority: str | None) -> str:
+    """Explicit priority wins; otherwise OTP-like template names are high priority."""
+    if priority == "high":
+        return "high_priority"
+    if priority == "low":
+        return "low_priority"
+    name = (template_name or "").lower()
+    if any(keyword in name for keyword in settings.HIGH_PRIORITY_TEMPLATE_KEYWORDS):
+        return "high_priority"
+    return "low_priority"
 
 
 # ============================================================================
@@ -19,10 +54,11 @@ class SendNotificationSerializer(serializers.Serializer):
     )
     to = serializers.CharField(
         max_length=255,
-        help_text="Destination address (email, phone number, or device token)",
+        help_text="Destination address: email address, E.164 phone number "
+        "(e.g. +14155550123), or device token",
     )
     context = serializers.DictField(
-        child=serializers.CharField(allow_blank=True),
+        child=serializers.CharField(allow_blank=True, max_length=5000),
         default=dict,
         help_text="Key-value pairs for template variable substitution",
     )
@@ -33,15 +69,21 @@ class SendNotificationSerializer(serializers.Serializer):
         help_text="Unique key to prevent duplicate sends",
     )
     channel = serializers.ChoiceField(
-        choices=[("email", "Email"), ("sms", "SMS"), ("push", "Push")],
+        choices=[(c, c.upper() if c == "sms" else c.title()) for c in SUPPORTED_CHANNELS],
         required=False,
         help_text="Override channel (defaults to template's channel)",
+    )
+    priority = serializers.ChoiceField(
+        choices=[("high", "High"), ("low", "Low")],
+        required=False,
+        help_text="Queue priority override. Defaults to 'high' for OTP/verification "
+        "templates and 'low' otherwise.",
     )
     device_token = serializers.CharField(
         max_length=255,
         required=False,
         allow_blank=True,
-        help_text="Device token for push notifications",
+        help_text="Device token for push notifications (defaults to `to`)",
     )
     title = serializers.CharField(
         max_length=200,
@@ -65,22 +107,51 @@ class SendNotificationSerializer(serializers.Serializer):
                 {"template_name": "Template lookup failed"}
             )
 
+        channel = attrs.get("channel") or template.channel
+        if channel not in SUPPORTED_CHANNELS:
+            raise serializers.ValidationError(
+                {"channel": f"Channel '{channel}' is not supported yet. "
+                 f"Supported: {', '.join(SUPPORTED_CHANNELS)}."}
+            )
+        self._validate_recipient(channel, attrs)
+
         idem_key = attrs.get("idempotency_key") or None
         if idem_key:
             existing = NotificationLog.objects.filter(idempotency_key=idem_key).first()
             if existing:
+                if (existing.user_id, existing.to, existing.template_id) != (
+                    attrs["user_id"], attrs["to"], template.id
+                ):
+                    raise serializers.ValidationError(
+                        {"idempotency_key": "This key was already used for a different request."},
+                        code="idempotency_conflict",
+                    )
                 attrs["existing_log"] = existing
 
-        try:
-            rendered_body = template.body_template.format(**attrs.get("context", {}))
-        except KeyError as exc:
-            raise serializers.ValidationError(
-                {"context": f"missing template variable: {exc}"}
-            ) from exc
-
+        context = attrs.get("context", {})
+        attrs["rendered_body"] = render_template(template.body_template, context, "body")
+        attrs["rendered_subject"] = render_template(template.subject or "", context, "subject")
         attrs["template"] = template
-        attrs["rendered_body"] = rendered_body
+        attrs["channel"] = channel
+        attrs["queue"] = resolve_queue(template.name, attrs.get("priority"))
         return attrs
+
+    @staticmethod
+    def _validate_recipient(channel: str, attrs: dict) -> None:
+        to = attrs["to"].strip()
+        attrs["to"] = to
+        if channel == "email":
+            try:
+                _email_validator(to)
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({"to": "Enter a valid email address."}) from exc
+        elif channel == "sms":
+            if not E164_RE.match(to):
+                raise serializers.ValidationError(
+                    {"to": "Enter a phone number in E.164 format, e.g. +14155550123."}
+                )
+        elif channel == "push":
+            attrs["device_token"] = (attrs.get("device_token") or "").strip() or to
 
 
 # ============================================================================
