@@ -19,7 +19,7 @@ from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
-LIVENESS_PATH = "/healthz/"
+LIVENESS_PATH = "/health/"
 READINESS_PATH = "/readyz/"
 
 
