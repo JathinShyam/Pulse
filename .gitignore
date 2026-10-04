@@ -20,4 +20,3 @@ logs/
 # Docker
 *.pid
 *.log
-.stitch/
