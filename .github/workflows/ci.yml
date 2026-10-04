@@ -33,9 +33,9 @@ jobs:
       env:
         DJANGO_SETTINGS_MODULE: pulse.settings
         SECRET_KEY: test-secret-key
-        DATABASE_URL: sqlite:///:memory:
+        DATABASE_URL: "sqlite:///:memory:"
       run: |
-        pytest
+        python manage.py test
         
   docker:
     runs-on: ubuntu-latest
