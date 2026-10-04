@@ -4,30 +4,37 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('notifications', '0001_initial'),
+        ("notifications", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='notificationlog',
-            name='notificatio_status_a242db_idx',
+            model_name="notificationlog",
+            name="notificatio_status_a242db_idx",
         ),
         migrations.RemoveIndex(
-            model_name='notificationlog',
-            name='notificatio_next_re_c3523a_idx',
+            model_name="notificationlog",
+            name="notificatio_next_re_c3523a_idx",
         ),
         migrations.AddIndex(
-            model_name='notificationlog',
-            index=models.Index(fields=['status', 'next_retry_at'], name='notificatio_status_64d90d_idx'),
+            model_name="notificationlog",
+            index=models.Index(
+                fields=["status", "next_retry_at"], name="notificatio_status_64d90d_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='notificationlog',
-            index=models.Index(fields=['user_id', 'created_at'], name='notificatio_user_id_a3de53_idx'),
+            model_name="notificationlog",
+            index=models.Index(
+                fields=["user_id", "created_at"], name="notificatio_user_id_a3de53_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='notificationlog',
-            constraint=models.UniqueConstraint(condition=models.Q(('idempotency_key__isnull', False)), fields=('idempotency_key',), name='unique_idempotency'),
+            model_name="notificationlog",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("idempotency_key__isnull", False)),
+                fields=("idempotency_key",),
+                name="unique_idempotency",
+            ),
         ),
     ]

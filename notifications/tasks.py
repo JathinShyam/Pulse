@@ -44,13 +44,17 @@ def deliver(task, log_id: str, channel: str, send) -> None:
     try:
         log = NotificationLog.objects.get(id=log_id)
     except NotificationLog.DoesNotExist:
-        logger.warning("NotificationLog %s no longer exists, skipping %s send", log_id, channel)
+        logger.warning(
+            "NotificationLog %s no longer exists, skipping %s send", log_id, channel
+        )
         return
 
     # Celery delivers at-least-once (acks_late, worker crashes, redeliveries):
     # never send twice.
     if log.status == "sent":
-        logger.info("Notification %s already sent; skipping duplicate execution", log_id)
+        logger.info(
+            "Notification %s already sent; skipping duplicate execution", log_id
+        )
         return
 
     recipient = mask_recipient(log.to)
@@ -61,7 +65,11 @@ def deliver(task, log_id: str, channel: str, send) -> None:
             "failed", count_attempt=True, error_message=str(exc), next_retry_at=None
         )
         logger.error(
-            "%s delivery to %s failed permanently (log=%s): %s", channel, recipient, log_id, exc
+            "%s delivery to %s failed permanently (log=%s): %s",
+            channel,
+            recipient,
+            log_id,
+            exc,
         )
         return
     except Exception as exc:
@@ -72,7 +80,10 @@ def deliver(task, log_id: str, channel: str, send) -> None:
             )
             logger.exception(
                 "%s delivery to %s failed after %s attempts (log=%s)",
-                channel, recipient, attempt, log_id,
+                channel,
+                recipient,
+                attempt,
+                log_id,
             )
             return
 
@@ -85,7 +96,13 @@ def deliver(task, log_id: str, channel: str, send) -> None:
         )
         logger.warning(
             "%s delivery to %s failed (attempt %s/%s, log=%s): %s. Retrying in %ss",
-            channel, recipient, attempt, log.max_retries, log_id, exc, delay,
+            channel,
+            recipient,
+            attempt,
+            log.max_retries,
+            log_id,
+            exc,
+            delay,
         )
         raise task.retry(exc=exc, countdown=delay, max_retries=log.max_retries)
 
@@ -153,7 +170,9 @@ def send_sms_task(self, log_id: str, to_phone: str, body: str) -> None:
             # 4xx (invalid number, unverified recipient, auth...) won't succeed
             # on retry; 429 and 5xx are transient.
             if exc.status and 400 <= exc.status < 500 and exc.status != 429:
-                raise PermanentDeliveryError(f"Twilio error {exc.code}: {exc.msg}") from exc
+                raise PermanentDeliveryError(
+                    f"Twilio error {exc.code}: {exc.msg}"
+                ) from exc
             raise
         return {"provider": "twilio", "twilio_sid": str(message.sid)}
 
@@ -194,7 +213,10 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
             )
             try:
                 message_id = messaging.send(message, app=_get_firebase_app())
-            except (messaging.UnregisteredError, fb_exceptions.InvalidArgumentError) as exc:
+            except (
+                messaging.UnregisteredError,
+                fb_exceptions.InvalidArgumentError,
+            ) as exc:
                 raise PermanentDeliveryError(f"FCM rejected token: {exc}") from exc
             return {"provider": "fcm", "message_id": message_id}
 
@@ -203,7 +225,9 @@ def send_push_task(self, log_id: str, device_token: str, title: str, body: str) 
             # contain OTPs or other secrets.
             logger.info(
                 "[console push] token=%s title=%r (log=%s)",
-                mask_recipient(device_token), title, log_id,
+                mask_recipient(device_token),
+                title,
+                log_id,
             )
             return {"provider": "console", "simulated": True}
 
@@ -235,9 +259,9 @@ def send_daily_digest():
     the last 7 days.
     """
     seven_days_ago = timezone.now() - timedelta(days=7)
-    recently_active = NotificationLog.objects.filter(created_at__gte=seven_days_ago).values(
-        "user_id"
-    )
+    recently_active = NotificationLog.objects.filter(
+        created_at__gte=seven_days_ago
+    ).values("user_id")
     quiet_users = (
         NotificationLog.objects.exclude(user_id__in=recently_active)
         .values_list("user_id", flat=True)

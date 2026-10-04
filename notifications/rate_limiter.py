@@ -70,6 +70,9 @@ class RateLimiter:
             pipe.expire(redis_key, self.window * 2)
             current_count, _ = pipe.execute()
         except redis.RedisError:
-            logger.warning("Rate limiter unavailable (Redis error); allowing request", exc_info=True)
+            logger.warning(
+                "Rate limiter unavailable (Redis error); allowing request",
+                exc_info=True,
+            )
             return True
         return int(current_count) <= self.max_requests

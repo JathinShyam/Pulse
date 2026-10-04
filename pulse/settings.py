@@ -30,7 +30,11 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 
 def env_list(name: str, default: str = "") -> list[str]:
-    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+    return [
+        item.strip()
+        for item in os.environ.get(name, default).split(",")
+        if item.strip()
+    ]
 
 
 def env_int(name: str, default: int) -> int:
@@ -52,11 +56,13 @@ DEBUG = env_bool("DEBUG", False)
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
     if DEBUG:
-        SECRET_KEY = "django-insecure-local-development-only-key-do-not-use-in-production"
+        SECRET_KEY = (
+            "django-insecure-local-development-only-key-do-not-use-in-production"
+        )
     else:
         raise ImproperlyConfigured(
             "SECRET_KEY must be set when DEBUG is off. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(50))\""
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
         )
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]")
@@ -244,7 +250,9 @@ REST_FRAMEWORK = {
 # Optional per-client (IP) throttle across the whole API, e.g. "300/min".
 API_THROTTLE_RATE = os.environ.get("API_THROTTLE_RATE", "").strip()
 if API_THROTTLE_RATE:
-    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = ["rest_framework.throttling.AnonRateThrottle"]
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = [
+        "rest_framework.throttling.AnonRateThrottle"
+    ]
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {"anon": API_THROTTLE_RATE}
 
 # Add schema class if docs are enabled

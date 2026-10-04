@@ -33,6 +33,7 @@ else:
     def extend_schema(*args, **kwargs):
         def decorator(func):
             return func
+
         return decorator
 
     OpenApiParameter = None
@@ -117,7 +118,7 @@ class SendNotificationView(APIView):
                 request,
                 started_at,
                 response.status_code,
-                extra={"user_id": data['user_id'], "channel": channel},
+                extra={"user_id": data["user_id"], "channel": channel},
             )
             return response
 
@@ -180,7 +181,9 @@ class SendNotificationView(APIView):
                     exc_info=e,
                 )
                 # Log the error immediately with atomic update
-                log.atomic_update_status("failed", error_message=str(e), next_retry_at=None)
+                log.atomic_update_status(
+                    "failed", error_message=str(e), next_retry_at=None
+                )
                 return Response(
                     {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )

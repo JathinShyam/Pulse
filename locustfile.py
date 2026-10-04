@@ -16,7 +16,7 @@ Target: 10K-15K successful requests/min with <1% failure rate
 
 Load Test Scenarios:
 1. send_notification - Standard notification sends (weighted 10)
-2. send_otp - High-priority OTP notifications (weighted 5)  
+2. send_otp - High-priority OTP notifications (weighted 5)
 3. check_status - Status checks on sent notifications (weighted 2)
 4. list_notifications - List recent notifications (weighted 1)
 """
@@ -31,53 +31,53 @@ from locust import HttpUser, between, task
 class PulseNotificationUser(HttpUser):
     """
     Simulated user that sends notifications through Pulse API.
-    
+
     Configurable wait time between requests to simulate realistic traffic patterns.
     Default: 0.5-2.0 seconds between requests per user.
-    
+
     For aggressive load testing, reduce wait_time to between(0.1, 0.5)
     """
-    
+
     wait_time = between(0.5, 2.0)
-    
+
     # Store notification IDs for status checks
     sent_notification_ids: list = []
-    
+
     # Test data
     CHANNELS = ["email", "sms", "push"]
-    
+
     # Templates - should exist in your database
     STANDARD_TEMPLATES = [
         "welcome_email",
-        "order_confirmation", 
+        "order_confirmation",
         "newsletter",
         "password_reset",
         "account_update",
     ]
-    
+
     OTP_TEMPLATES = [
         "otp_verification",
         "otp_sms",
         "login_otp",
     ]
-    
+
     # Sample recipients
     EMAIL_DOMAINS = ["example.com", "test.com", "loadtest.dev", "pulse.test"]
     PHONE_PREFIXES = ["+1555", "+1666", "+1777", "+1888"]
-    
+
     def on_start(self):
         """Initialize user session."""
         self.user_id = f"load_user_{uuid.uuid4().hex[:8]}"
         self.sent_notification_ids = []
-    
+
     def _generate_email(self) -> str:
         """Generate random test email."""
         return f"user_{uuid.uuid4().hex[:8]}@{random.choice(self.EMAIL_DOMAINS)}"
-    
+
     def _generate_phone(self) -> str:
         """Generate random test phone number."""
         return f"{random.choice(self.PHONE_PREFIXES)}{random.randint(1000000, 9999999)}"
-    
+
     def _get_recipient(self, channel: str) -> str:
         """Get appropriate recipient based on channel."""
         if channel == "email":
@@ -88,7 +88,7 @@ class PulseNotificationUser(HttpUser):
             return f"device_token_{uuid.uuid4().hex[:16]}"
         else:
             return self._generate_email()
-    
+
     @task(10)
     def send_notification(self):
         """
@@ -97,7 +97,7 @@ class PulseNotificationUser(HttpUser):
         """
         channel = random.choice(self.CHANNELS)
         template = random.choice(self.STANDARD_TEMPLATES)
-        
+
         payload = {
             "user_id": self.user_id,
             "template_name": template,
@@ -110,12 +110,12 @@ class PulseNotificationUser(HttpUser):
             },
             "idempotency_key": str(uuid.uuid4()),
         }
-        
+
         with self.client.post(
             "/api/notifications/send/",
             json=payload,
             name="/api/notifications/send/ [standard]",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code in [200, 201, 202]:
                 try:
@@ -131,7 +131,7 @@ class PulseNotificationUser(HttpUser):
                 response.failure("Rate limited (429)")
             else:
                 response.failure(f"Unexpected status: {response.status_code}")
-    
+
     @task(5)
     def send_otp(self):
         """
@@ -140,7 +140,7 @@ class PulseNotificationUser(HttpUser):
         """
         channel = random.choice(["sms", "email"])
         template = random.choice(self.OTP_TEMPLATES)
-        
+
         payload = {
             "user_id": self.user_id,
             "template_name": template,
@@ -153,12 +153,12 @@ class PulseNotificationUser(HttpUser):
             },
             "idempotency_key": str(uuid.uuid4()),
         }
-        
+
         with self.client.post(
             "/api/notifications/send/",
             json=payload,
             name="/api/notifications/send/ [otp]",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code in [200, 201, 202]:
                 response.success()
@@ -166,7 +166,7 @@ class PulseNotificationUser(HttpUser):
                 response.failure("Rate limited (429)")
             else:
                 response.failure(f"Unexpected status: {response.status_code}")
-    
+
     @task(2)
     def check_status(self):
         """
@@ -175,13 +175,13 @@ class PulseNotificationUser(HttpUser):
         """
         if not self.sent_notification_ids:
             return  # No notifications to check yet
-        
+
         notification_id = random.choice(self.sent_notification_ids)
-        
+
         with self.client.get(
             f"/api/notifications/status/{notification_id}/",
             name="/api/notifications/status/[id]/",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code == 200:
                 response.success()
@@ -192,7 +192,7 @@ class PulseNotificationUser(HttpUser):
                 response.success()  # Expected behavior
             else:
                 response.failure(f"Unexpected status: {response.status_code}")
-    
+
     @task(1)
     def list_notifications(self):
         """
@@ -202,7 +202,7 @@ class PulseNotificationUser(HttpUser):
         with self.client.get(
             f"/api/notifications/list/?user_id={self.user_id}&limit=10",
             name="/api/notifications/list/",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code == 200:
                 response.success()
@@ -214,9 +214,10 @@ class AggressiveLoadUser(PulseNotificationUser):
     """
     Aggressive load tester with minimal wait time.
     Use for stress testing to find breaking points.
-    
+
     WARNING: This will generate very high load!
     """
+
     wait_time = between(0.1, 0.3)
 
 
@@ -225,21 +226,21 @@ class BurstLoadUser(PulseNotificationUser):
     Burst traffic simulator - alternates between high and low activity.
     Useful for testing auto-scaling behavior.
     """
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.burst_mode = False
         self.request_count = 0
-    
+
     @property
     def wait_time(self):
         """Dynamic wait time - fast during bursts, slow otherwise."""
         self.request_count += 1
-        
+
         # Toggle burst mode every 50 requests
         if self.request_count % 50 == 0:
             self.burst_mode = not self.burst_mode
-        
+
         if self.burst_mode:
             return between(0.1, 0.3)
         return between(1.0, 3.0)
@@ -247,24 +248,27 @@ class BurstLoadUser(PulseNotificationUser):
 
 # Convenience classes for specific test scenarios
 
+
 class EmailOnlyUser(PulseNotificationUser):
     """Test email channel exclusively."""
+
     CHANNELS = ["email"]
 
 
 class SMSOnlyUser(PulseNotificationUser):
     """Test SMS channel exclusively."""
+
     CHANNELS = ["sms"]
 
 
 class HighPriorityOnlyUser(PulseNotificationUser):
     """Test only high-priority (OTP) notifications."""
-    
+
     @task(1)
     def send_notification(self):
         """Override to only send OTP."""
         self.send_otp()
-    
+
     @task(0)
     def send_otp(self):
         """Disabled - merged into send_notification."""

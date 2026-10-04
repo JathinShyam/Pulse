@@ -69,7 +69,9 @@ class SendNotificationSerializer(serializers.Serializer):
         help_text="Unique key to prevent duplicate sends",
     )
     channel = serializers.ChoiceField(
-        choices=[(c, c.upper() if c == "sms" else c.title()) for c in SUPPORTED_CHANNELS],
+        choices=[
+            (c, c.upper() if c == "sms" else c.title()) for c in SUPPORTED_CHANNELS
+        ],
         required=False,
         help_text="Override channel (defaults to template's channel)",
     )
@@ -110,8 +112,10 @@ class SendNotificationSerializer(serializers.Serializer):
         channel = attrs.get("channel") or template.channel
         if channel not in SUPPORTED_CHANNELS:
             raise serializers.ValidationError(
-                {"channel": f"Channel '{channel}' is not supported yet. "
-                 f"Supported: {', '.join(SUPPORTED_CHANNELS)}."}
+                {
+                    "channel": f"Channel '{channel}' is not supported yet. "
+                    f"Supported: {', '.join(SUPPORTED_CHANNELS)}."
+                }
             )
         self._validate_recipient(channel, attrs)
 
@@ -120,17 +124,25 @@ class SendNotificationSerializer(serializers.Serializer):
             existing = NotificationLog.objects.filter(idempotency_key=idem_key).first()
             if existing:
                 if (existing.user_id, existing.to, existing.template_id) != (
-                    attrs["user_id"], attrs["to"], template.id
+                    attrs["user_id"],
+                    attrs["to"],
+                    template.id,
                 ):
                     raise serializers.ValidationError(
-                        {"idempotency_key": "This key was already used for a different request."},
+                        {
+                            "idempotency_key": "This key was already used for a different request."
+                        },
                         code="idempotency_conflict",
                     )
                 attrs["existing_log"] = existing
 
         context = attrs.get("context", {})
-        attrs["rendered_body"] = render_template(template.body_template, context, "body")
-        attrs["rendered_subject"] = render_template(template.subject or "", context, "subject")
+        attrs["rendered_body"] = render_template(
+            template.body_template, context, "body"
+        )
+        attrs["rendered_subject"] = render_template(
+            template.subject or "", context, "subject"
+        )
         attrs["template"] = template
         attrs["channel"] = channel
         attrs["queue"] = resolve_queue(template.name, attrs.get("priority"))
@@ -144,7 +156,9 @@ class SendNotificationSerializer(serializers.Serializer):
             try:
                 _email_validator(to)
             except DjangoValidationError as exc:
-                raise serializers.ValidationError({"to": "Enter a valid email address."}) from exc
+                raise serializers.ValidationError(
+                    {"to": "Enter a valid email address."}
+                ) from exc
         elif channel == "sms":
             if not E164_RE.match(to):
                 raise serializers.ValidationError(

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.utils import timezone
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from .models import NotificationLog, NotificationTemplate
 from .serializers import SendNotificationSerializer
@@ -44,7 +44,9 @@ class IdempotencyTest(TestCase):
 
         # Should return the same log
         self.assertEqual(log1.id, log2.id)
-        self.assertEqual(NotificationLog.objects.filter(idempotency_key=idem_key).count(), 1)
+        self.assertEqual(
+            NotificationLog.objects.filter(idempotency_key=idem_key).count(), 1
+        )
 
     def test_create_if_not_exists_without_idempotency_key(self):
         """Test that create_if_not_exists works without idempotency key"""
@@ -130,7 +132,9 @@ class IdempotencyAPITest(TestCase):
 
         # First request
         response1 = self.client.post("/api/notifications/send/", data, format="json")
-        self.assertIn(response1.status_code, [status.HTTP_202_ACCEPTED, status.HTTP_200_OK])
+        self.assertIn(
+            response1.status_code, [status.HTTP_202_ACCEPTED, status.HTTP_200_OK]
+        )
         notification_id_1 = response1.data.get("notification_id")
 
         # Second request with same idempotency key
@@ -143,5 +147,6 @@ class IdempotencyAPITest(TestCase):
 
         # Should only have one log in database
         self.assertEqual(
-            NotificationLog.objects.filter(idempotency_key="api-dup-test-123").count(), 1
+            NotificationLog.objects.filter(idempotency_key="api-dup-test-123").count(),
+            1,
         )
