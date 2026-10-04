@@ -23,7 +23,6 @@ Load Test Scenarios:
 
 import random
 import uuid
-from typing import Optional
 
 from locust import HttpUser, between, task
 
@@ -272,4 +271,3 @@ class HighPriorityOnlyUser(PulseNotificationUser):
     @task(0)
     def send_otp(self):
         """Disabled - merged into send_notification."""
-        pass

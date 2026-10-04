@@ -4,7 +4,7 @@ Real-time metrics for notification system monitoring.
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -421,7 +421,7 @@ def main():
             fig, ax = plt.subplots(figsize=(8, 3), facecolor="#1a1a1a")
             ax.set_facecolor("#1a1a1a")
             colors = ["#00d4ff", "#00ff88", "#a855f7"]
-            bars = ax.barh(
+            ax.barh(
                 list(queue_lengths.keys()), list(queue_lengths.values()), color=colors
             )
             ax.set_xlabel("Jobs in Queue", color="#888888")
@@ -435,9 +435,7 @@ def main():
 
     # Notification Stats by Channel
     st.markdown(
-        '<div class="section-header">📊 Notifications by Channel (Last {0}h)</div>'.format(
-            time_range
-        ),
+        f'<div class="section-header">📊 Notifications by Channel (Last {time_range}h)</div>',
         unsafe_allow_html=True,
     )
 
@@ -544,7 +542,7 @@ def main():
                 for rate in fail_df["fail_rate"].fillna(0)
             ]
 
-            bars = ax.bar(
+            ax.bar(
                 fail_df["channel"], fail_df["fail_rate"].fillna(0), color=colors
             )
             ax.set_xlabel("Channel", color="#888888")

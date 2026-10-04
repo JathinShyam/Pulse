@@ -5,7 +5,6 @@ Exposes /metrics endpoint for Prometheus scraping.
 
 import os
 import time
-from threading import Thread
 
 import redis
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
