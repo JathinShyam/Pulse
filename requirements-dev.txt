@@ -1,0 +1,5 @@
+# Development, testing and load-testing tools.
+pytest~=9.1
+pytest-django~=4.14
+ruff~=0.14
+locust~=2.46

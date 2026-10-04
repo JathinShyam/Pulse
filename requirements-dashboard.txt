@@ -1,0 +1,7 @@
+# Observability dashboard (Streamlit) + Prometheus exporter.
+# Not needed by the API or workers; installed only in images that run them.
+streamlit~=1.50
+prometheus-client~=0.26
+sqlalchemy~=2.0
+pandas>=2.2,<4
+matplotlib~=3.9

@@ -1,23 +1,23 @@
-django==5.1.1
-djangorestframework==3.15.0
-psycopg[binary]==3.2.3
-celery==5.4.0
-redis==5.0.8
-dj-database-url==2.2.0
-twilio==9.3.0
-firebase-admin==6.5.0
-pytest==8.0.0
-pytest-django==4.8.0
-flower==2.0.1
-drf-spectacular==0.27.2
+# Runtime dependencies (API + Celery workers).
+# Compatible-release pins (~=) pick up patch/security releases automatically.
+# For fully reproducible builds, generate a lock file (e.g. `pip-compile`).
 
-# Observability Dashboard
-streamlit==1.38.0
-prometheus-client==0.20.0
-sqlalchemy==2.0.35
-pandas==2.2.3
-matplotlib==3.9.2
-psycopg2-binary==2.9.9
+# Django 5.2 is the current LTS (security support until April 2028).
+# Django 5.1 (previously pinned) reached end-of-life in December 2025.
+django~=5.2.17
+djangorestframework~=3.16
+drf-spectacular~=0.30.0
+dj-database-url~=3.1
+psycopg[binary]~=3.3
 
-# Load Testing
-locust==2.29.1
+# Task queue (the [redis] extra pulls a redis-py version compatible with kombu)
+celery[redis]~=5.6.3
+flower~=2.2
+
+# Delivery providers
+twilio~=9.11
+firebase-admin~=7.7
+
+# Production serving
+gunicorn~=26.2
+whitenoise~=6.12
