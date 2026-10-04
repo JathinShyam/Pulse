@@ -26,7 +26,7 @@ spec:
   #       - pulse.example.com
   #     secretName: pulse-tls
   rules:
-    - host: pulse.example.com  # Replace with your domain
+    - host: pulse.example.com # Replace with your domain
       http:
         paths:
           # API endpoints
@@ -71,7 +71,7 @@ metadata:
     # nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
 spec:
   rules:
-    - host: pulse-internal.example.com  # Replace with your internal domain
+    - host: pulse-internal.example.com # Replace with your internal domain
       http:
         paths:
           - path: /flower

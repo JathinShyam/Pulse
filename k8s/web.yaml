@@ -23,7 +23,7 @@ spec:
       initContainers:
         # Run migrations before starting the web server
         - name: migrate
-          image: pulse:latest  # Replace with your registry image
+          image: pulse:latest # Replace with your registry image
           command: ["python", "manage.py", "migrate", "--noinput"]
           envFrom:
             - configMapRef:
@@ -35,8 +35,16 @@ spec:
               value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres-service:5432/pulse"
       containers:
         - name: web
-          image: pulse:latest  # Replace with your registry image
-          command: ["gunicorn", "pulse.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
+          image: pulse:latest # Replace with your registry image
+          command:
+            [
+              "gunicorn",
+              "pulse.wsgi:application",
+              "--bind",
+              "0.0.0.0:8000",
+              "--workers",
+              "4",
+            ]
           ports:
             - containerPort: 8000
           envFrom:

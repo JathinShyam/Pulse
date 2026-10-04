@@ -27,5 +27,5 @@ commonLabels:
 # Image customization (override image tags here)
 images:
   - name: pulse
-    newName: pulse  # Replace with your-registry/pulse
-    newTag: latest  # Replace with specific version tag
+    newName: pulse # Replace with your-registry/pulse
+    newTag: latest # Replace with specific version tag

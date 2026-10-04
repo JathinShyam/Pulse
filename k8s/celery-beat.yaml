@@ -10,9 +10,9 @@ metadata:
     app: pulse
     component: celery-beat
 spec:
-  replicas: 1  # MUST be 1 - Beat is a singleton
+  replicas: 1 # MUST be 1 - Beat is a singleton
   strategy:
-    type: Recreate  # Ensure only one instance runs
+    type: Recreate # Ensure only one instance runs
   selector:
     matchLabels:
       app: pulse
@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: celery-beat
-          image: pulse:latest  # Replace with your registry image
+          image: pulse:latest # Replace with your registry image
           command:
             - celery
             - -A

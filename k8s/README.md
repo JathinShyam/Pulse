@@ -128,11 +128,11 @@ kubectl scale deployment celery-low -n pulse --replicas=4
 
 HorizontalPodAutoscalers are configured for:
 
-| Component    | Min | Max | CPU Target | Memory Target |
-| ------------ | --- | --- | ---------- | ------------- |
-| pulse-web    | 2   | 10  | 70%        | 80%           |
-| celery-high  | 2   | 20  | 60%        | 70%           |
-| celery-low   | 1   | 10  | 70%        | 80%           |
+| Component   | Min | Max | CPU Target | Memory Target |
+| ----------- | --- | --- | ---------- | ------------- |
+| pulse-web   | 2   | 10  | 70%        | 80%           |
+| celery-high | 2   | 20  | 60%        | 70%           |
+| celery-low  | 1   | 10  | 70%        | 80%           |
 
 View HPA status:
 
@@ -171,7 +171,7 @@ Metrics are exposed at port 8001. Add to your Prometheus config:
 
 ```yaml
 scrape_configs:
-  - job_name: 'pulse'
+  - job_name: "pulse"
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -188,6 +188,7 @@ scrape_configs:
 Import dashboard from `monitoring/grafana-dashboard.json` (if available).
 
 Key metrics:
+
 - `pulse_celery_queue_length{queue_name}` – Queue depths
 - `pulse_notifications_by_status{status}` – Status distribution
 - `pulse_notification_failure_rate{channel}` – Failure rates
@@ -206,7 +207,7 @@ groups:
           severity: warning
         annotations:
           summary: "High priority queue backing up"
-          
+
       - alert: HighFailureRate
         expr: pulse_notification_failure_rate > 5
         for: 10m
@@ -221,6 +222,7 @@ groups:
 ### Database
 
 For production, use managed PostgreSQL:
+
 - AWS RDS
 - Google Cloud SQL
 - Azure Database for PostgreSQL
@@ -230,6 +232,7 @@ Update `configmap.yaml` with external database host.
 ### Redis
 
 For production, use managed Redis:
+
 - AWS ElastiCache
 - Google Memorystore
 - Azure Cache for Redis
@@ -262,6 +265,7 @@ kubectl top pods -n pulse
 ### Secrets Management
 
 For production, use:
+
 - HashiCorp Vault
 - AWS Secrets Manager
 - Kubernetes External Secrets
@@ -271,18 +275,21 @@ For production, use:
 ### Common Issues
 
 **Pods stuck in Pending:**
+
 ```bash
 kubectl describe pod <pod-name> -n pulse
 # Check for resource constraints or PVC issues
 ```
 
 **Database connection errors:**
+
 ```bash
 kubectl logs -n pulse -l component=web | grep -i database
 # Verify DATABASE_URL and secrets
 ```
 
 **Workers not processing:**
+
 ```bash
 kubectl exec -n pulse -it deployment/celery-high -- celery -A pulse inspect active
 # Check Redis connectivity
@@ -307,18 +314,18 @@ kubectl rollout restart deployment/pulse-web -n pulse
 
 ## Files Overview
 
-| File | Description |
-|------|-------------|
-| `namespace.yaml` | Creates `pulse` namespace |
-| `configmap.yaml` | Non-sensitive configuration |
-| `secrets.yaml` | Sensitive credentials (template) |
-| `redis.yaml` | Redis broker deployment |
-| `postgres.yaml` | PostgreSQL database (dev only) |
-| `web.yaml` | Django API + HPA |
-| `celery-high.yaml` | High-priority workers + HPA |
-| `celery-low.yaml` | Low-priority workers + HPA |
-| `celery-beat.yaml` | Scheduler (singleton) |
-| `flower.yaml` | Celery monitoring UI |
-| `metrics.yaml` | Prometheus exporter |
-| `ingress.yaml` | External routing |
-| `kustomization.yaml` | Kustomize config |
+| File                 | Description                      |
+| -------------------- | -------------------------------- |
+| `namespace.yaml`     | Creates `pulse` namespace        |
+| `configmap.yaml`     | Non-sensitive configuration      |
+| `secrets.yaml`       | Sensitive credentials (template) |
+| `redis.yaml`         | Redis broker deployment          |
+| `postgres.yaml`      | PostgreSQL database (dev only)   |
+| `web.yaml`           | Django API + HPA                 |
+| `celery-high.yaml`   | High-priority workers + HPA      |
+| `celery-low.yaml`    | Low-priority workers + HPA       |
+| `celery-beat.yaml`   | Scheduler (singleton)            |
+| `flower.yaml`        | Celery monitoring UI             |
+| `metrics.yaml`       | Prometheus exporter              |
+| `ingress.yaml`       | External routing                 |
+| `kustomization.yaml` | Kustomize config                 |

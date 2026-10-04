@@ -6,7 +6,7 @@ The project includes auto-generated OpenAPI documentation using `drf-spectacular
 2. **ReDoc:** Available at `/api/redoc/`
 3. **OpenAPI Schema:** Available at `/api/schema/`
 
-*Note: Documentation is enabled only if `ENABLE_DOCS=True` in your environment.*
+_Note: Documentation is enabled only if `ENABLE_DOCS=True` in your environment._
 
 ### Key Endpoints
 

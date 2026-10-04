@@ -1,0 +1,1254 @@
+<!doctype html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta content="web_dashboard" name="shell-type" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&amp;family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @layer base {
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+        }
+        main > :first-child {
+          margin-top: 0 !important;
+        }
+        main > :last-child {
+          margin-bottom: 0 !important;
+        }
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error": "#690005",
+              "error-container": "#93000a",
+              "surface-dark": "#0B0D0E",
+              "on-tertiary-fixed-variant": "#802900",
+              "on-primary": "#5f1500",
+              "inverse-primary": "#b02f00",
+              "outline-variant": "#5b4039",
+              "surface-container-high": "#282a2b",
+              "on-tertiary-container": "#501600",
+              "surface-light": "#FFFFFF",
+              "on-tertiary-fixed": "#380d00",
+              "on-primary-fixed-variant": "#862200",
+              "on-surface": "#e2e2e3",
+              "on-secondary": "#2f3131",
+              "surface-card-dark": "#14171A",
+              "surface-container-highest": "#333536",
+              "surface-card-light": "#F5F6F8",
+              "surface-dim": "#121415",
+              "border-light": "#E5E8EB",
+              "primary-fixed-dim": "#ffb5a0",
+              "surface-variant": "#333536",
+              "on-background": "#e2e2e3",
+              "secondary-container": "#454747",
+              surface: "#121415",
+              "text-muted-dark": "#8A929A",
+              "on-primary-container": "#541100",
+              "surface-container": "#1e2021",
+              "on-secondary-fixed-variant": "#454747",
+              "tertiary-fixed": "#ffdbcf",
+              outline: "#ab8980",
+              tertiary: "#ffb59a",
+              "primary-container": "#fe5824",
+              "inverse-on-surface": "#2f3132",
+              "surface-pitch": "#050607",
+              "on-secondary-fixed": "#1a1c1c",
+              secondary: "#c6c6c7",
+              "on-primary-fixed": "#3b0900",
+              "surface-bright": "#38393a",
+              primary: "#ffb5a0",
+              "on-secondary-container": "#b4b5b5",
+              "surface-card-hover": "#1C2024",
+              background: "#121415",
+              "on-error-container": "#ffdad6",
+              "on-tertiary": "#5b1b00",
+              "surface-tint": "#ffb5a0",
+              "tertiary-container": "#ea6a37",
+              "tertiary-fixed-dim": "#ffb59a",
+              "surface-container-low": "#1a1c1d",
+              "inverse-surface": "#e2e2e3",
+              "secondary-fixed": "#e2e2e2",
+              "text-muted-light": "#66707A",
+              "primary-fixed": "#ffdbd1",
+              error: "#ffb4ab",
+              "secondary-fixed-dim": "#c6c6c7",
+              "surface-container-lowest": "#0c0e0f",
+              "on-surface-variant": "#e4beb4",
+              "border-dark": "#23282D",
+            },
+            borderRadius: {
+              DEFAULT: "1rem",
+              lg: "2rem",
+              xl: "3rem",
+              full: "9999px",
+            },
+            spacing: {
+              "margin-desktop": "4.5rem",
+              margin: "1.25rem",
+              "space-xl": "2.5rem",
+              "margin-tablet": "2.5rem",
+              "space-3xl": "6.5rem",
+              "space-2xl": "4rem",
+              "space-lg": "1.5rem",
+              "space-sm": "0.5rem",
+              "space-xs": "0.25rem",
+              gutter: "1.5rem",
+              "space-md": "1rem",
+              "gutter-desktop": "2.5rem",
+            },
+            fontFamily: {
+              "headline-xl-mobile": ["Bricolage Grotesque"],
+              "body-lg": ["Hanken Grotesk"],
+              "display-hero": ["Bricolage Grotesque"],
+              "headline-sm": ["Bricolage Grotesque"],
+              "headline-xl": ["Bricolage Grotesque"],
+              "headline-lg": ["Bricolage Grotesque"],
+              "body-xl": ["Hanken Grotesk"],
+              "stat-counter": ["Bricolage Grotesque"],
+              "headline-lg-mobile": ["Bricolage Grotesque"],
+              "label-caps": ["Hanken Grotesk"],
+              "label-md": ["Hanken Grotesk"],
+              "body-md": ["Hanken Grotesk"],
+              "headline-md": ["Bricolage Grotesque"],
+              "display-hero-mobile": ["Bricolage Grotesque"],
+            },
+            fontSize: {
+              "headline-xl-mobile": [
+                "34px",
+                {
+                  lineHeight: "40px",
+                  letterSpacing: "-0.025em",
+                  fontWeight: "700",
+                },
+              ],
+              "body-lg": [
+                "17px",
+                {
+                  lineHeight: "26px",
+                  letterSpacing: "-0.005em",
+                  fontWeight: "400",
+                },
+              ],
+              "display-hero": [
+                "84px",
+                {
+                  lineHeight: "90px",
+                  letterSpacing: "-0.04em",
+                  fontWeight: "800",
+                },
+              ],
+              "headline-sm": [
+                "20px",
+                {
+                  lineHeight: "26px",
+                  letterSpacing: "-0.015em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-xl": [
+                "56px",
+                {
+                  lineHeight: "62px",
+                  letterSpacing: "-0.035em",
+                  fontWeight: "700",
+                },
+              ],
+              "headline-lg": [
+                "40px",
+                {
+                  lineHeight: "46px",
+                  letterSpacing: "-0.03em",
+                  fontWeight: "700",
+                },
+              ],
+              "body-xl": [
+                "20px",
+                {
+                  lineHeight: "30px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "400",
+                },
+              ],
+              "stat-counter": [
+                "64px",
+                {
+                  lineHeight: "64px",
+                  letterSpacing: "-0.04em",
+                  fontWeight: "800",
+                },
+              ],
+              "headline-lg-mobile": [
+                "28px",
+                {
+                  lineHeight: "34px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "700",
+                },
+              ],
+              "label-caps": [
+                "11px",
+                {
+                  lineHeight: "14px",
+                  letterSpacing: "0.08em",
+                  fontWeight: "700",
+                },
+              ],
+              "label-md": [
+                "13px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "body-md": [
+                "15px",
+                { lineHeight: "22px", letterSpacing: "0em", fontWeight: "400" },
+              ],
+              "headline-md": [
+                "28px",
+                {
+                  lineHeight: "34px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "display-hero-mobile": [
+                "44px",
+                {
+                  lineHeight: "48px",
+                  letterSpacing: "-0.03em",
+                  fontWeight: "800",
+                },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-surface-pitch text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container"
+  >
+    <aside
+      class="fixed left-0 top-0 h-screen w-72 bg-surface-container-lowest flex flex-col justify-between z-50 p-space-md"
+    >
+      <div class="flex flex-col gap-space-lg">
+        <div class="flex items-center justify-between px-space-xs">
+          <div class="flex items-center gap-space-sm">
+            <div
+              class="w-9 h-9 rounded-DEFAULT bg-primary-container flex items-center justify-center shadow-[0_0_20px_rgba(254,88,36,0.35)]"
+            >
+              <span
+                class="material-symbols-outlined text-surface-pitch text-[20px] font-bold"
+                >bolt</span
+              >
+            </div>
+            <div class="flex flex-col">
+              <span
+                class="font-headline-sm text-headline-sm tracking-tight text-surface-light"
+                >PULSE</span
+              ><span
+                class="font-label-caps text-label-caps tracking-widest text-primary-container"
+                >ENGINE v4.2</span
+              >
+            </div>
+          </div>
+          <div
+            class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-high"
+          >
+            <span
+              class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"
+            ></span
+            ><span
+              class="font-label-caps text-label-caps text-on-surface-variant font-mono"
+              >PROD</span
+            >
+          </div>
+        </div>
+        <div
+          class="p-space-sm rounded-DEFAULT bg-surface-container-low flex items-center justify-between"
+        >
+          <div class="flex items-center gap-space-sm">
+            <span class="material-symbols-outlined text-secondary text-[18px]"
+              >dns</span
+            >
+            <div class="flex flex-col">
+              <span
+                class="font-label-md text-label-md text-on-surface font-mono"
+                >edge-us-east-1</span
+              ><span
+                class="font-label-caps text-label-caps text-text-muted-dark"
+                >42 nodes active</span
+              >
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-secondary text-[16px]"
+            >unfold_more</span
+          >
+        </div>
+        <nav
+          class="flex flex-col gap-1"
+          data-active-classes="bg-primary-container text-on-primary-container font-bold"
+        >
+          <a
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-md text-label-md"
+            data-path="overview"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">grid_view</span
+            ><span>Overview</span></a
+          ><a
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-md text-label-md"
+            data-path="analytics"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">insights</span
+            ><span>Analytics</span></a
+          ><a
+            aria-current="page"
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT transition-colors bg-primary-container text-on-primary-container font-bold"
+            data-path="send-notification-dispatch-composer"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">send</span
+            ><span>Dispatch Composer</span></a
+          ><a
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-md text-label-md"
+            data-path="gateways-carrier-routing-architecture"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">hub</span
+            ><span>Gateways &amp; Carriers</span></a
+          ><a
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-md text-label-md"
+            data-path="logs-telemetry-stream"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">terminal</span
+            ><span>Logs &amp; Telemetry</span></a
+          ><a
+            class="flex items-center gap-space-sm px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-md text-label-md"
+            data-path="settings"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px]">tune</span
+            ><span>Engine Settings</span></a
+          >
+        </nav>
+      </div>
+      <div
+        class="p-space-sm rounded-DEFAULT bg-surface-container-low flex items-center justify-between"
+      >
+        <div class="flex items-center gap-space-sm">
+          <div
+            class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"
+          >
+            <span class="material-symbols-outlined text-on-primary text-[18px]"
+              >person</span
+            >
+          </div>
+          <div class="flex flex-col">
+            <span
+              class="font-label-md text-label-md text-surface-light font-bold"
+              >Alex Vance</span
+            ><span
+              class="font-label-caps text-label-caps text-text-muted-dark font-mono"
+              >SR. SRE LEAD</span
+            >
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-secondary text-[18px]"
+          >lock_open</span
+        >
+      </div>
+    </aside>
+    <div class="pl-72">
+      <header
+        class="fixed top-0 left-72 right-0 h-16 bg-surface-pitch/90 backdrop-blur-xl z-40 px-space-lg flex items-center justify-between"
+      >
+        <div class="flex items-center gap-space-md w-96">
+          <div
+            class="flex items-center gap-space-sm w-full bg-surface-container-lowest px-space-md py-space-xs rounded-full shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+          >
+            <span
+              class="material-symbols-outlined text-text-muted-dark text-[18px]"
+              >search</span
+            ><input
+              class="bg-transparent text-on-surface font-body-md text-body-md placeholder:text-text-muted-dark focus:outline-none w-full"
+              placeholder="Filter stream by payload ID or carrier..."
+              type="text"
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-space-md">
+          <div
+            class="flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container-lowest"
+          >
+            <span
+              class="w-2 h-2 rounded-full bg-primary-container animate-pulse"
+            ></span
+            ><span
+              class="font-label-caps text-label-caps text-on-surface font-mono"
+              >CLUSTER LATENCY: 1.4ms</span
+            >
+          </div>
+          <button
+            class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-bold shadow-[0_8px_24px_-4px_rgba(254,88,36,0.35)] hover:bg-tertiary-container hover:text-on-tertiary-container transition-all"
+          >
+            <span class="material-symbols-outlined text-[16px]"
+              >electric_bolt</span
+            ><span>Deploy Signal</span>
+          </button>
+          <div
+            class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"
+          >
+            <span class="material-symbols-outlined text-on-primary text-[18px]"
+              >person</span
+            >
+          </div>
+        </div>
+      </header>
+      <main class="w-full pt-16 bg-surface-pitch min-h-screen">
+        <div class="flex flex-col w-full">
+          <div
+            class="w-full bg-surface-pitch px-space-lg py-space-md flex flex-col gap-space-lg"
+          >
+            <!-- Breadcrumb & Cluster Meta Bar -->
+            <section
+              class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-DEFAULT shadow-sm"
+            >
+              <div class="flex flex-col gap-1 min-w-0">
+                <div
+                  class="flex items-center gap-space-xs font-mono text-label-caps text-text-muted-dark"
+                >
+                  <span>// DISPATCH WORKSPACE</span>
+                  <span>/</span>
+                  <span class="text-primary-container font-bold"
+                    >EVENT COMPOSER</span
+                  >
+                </div>
+                <h1
+                  class="font-headline-md text-headline-md text-surface-light tracking-tight truncate"
+                >
+                  Mission Critical Signal Dispatch
+                </h1>
+              </div>
+              <div class="flex flex-wrap items-center gap-space-xs">
+                <div
+                  class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-full bg-surface-container-high text-on-surface"
+                >
+                  <span
+                    class="w-2 h-2 rounded-full bg-primary-container animate-ping"
+                  ></span>
+                  <span
+                    class="font-label-caps text-label-caps font-mono tracking-wider"
+                    >US-EAST-1 (PRIMARY) 38ms</span
+                  >
+                </div>
+                <div
+                  class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-full bg-surface-container font-mono text-label-caps text-on-surface-variant"
+                >
+                  <span
+                    class="material-symbols-outlined text-primary-container text-[14px]"
+                    >verified</span
+                  >
+                  <span>SCHEMA VALIDATED v2.4.1</span>
+                </div>
+                <div
+                  class="h-4 w-px bg-surface-container-highest mx-space-xs hidden md:block"
+                ></div>
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark font-mono uppercase mr-1"
+                  >Preset:</span
+                >
+                <button
+                  class="px-space-sm py-1 rounded-DEFAULT bg-primary-container text-on-primary-container font-label-md text-label-md font-bold shadow-[0_0_12px_rgba(254,88,36,0.3)] hover:brightness-110 transition-all"
+                >
+                  P0 - Security Incident
+                </button>
+                <button
+                  class="px-space-sm py-1 rounded-DEFAULT bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:text-surface-light hover:bg-surface-container-highest transition-colors"
+                >
+                  Transactional Invoice
+                </button>
+                <button
+                  class="px-space-sm py-1 rounded-DEFAULT bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:text-surface-light hover:bg-surface-container-highest transition-colors"
+                >
+                  System Health Alert
+                </button>
+              </div>
+            </section>
+            <!-- Multi-Channel Selector Matrix -->
+            <section class="flex flex-col gap-space-xs">
+              <div class="flex items-center justify-between px-space-xs">
+                <span
+                  class="font-label-caps text-label-caps tracking-widest text-text-muted-dark uppercase font-mono"
+                  >01 // Active Delivery Channel Mesh</span
+                >
+                <span
+                  class="font-label-caps text-label-caps text-primary-container font-mono"
+                  >4 OF 5 CHANNELS ENGAGED</span
+                >
+              </div>
+              <div
+                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-space-sm"
+              >
+                <!-- Channel 1: Apple APNs -->
+                <div
+                  class="group p-space-md rounded-DEFAULT bg-surface-card-dark hover:bg-surface-card-hover transition-all flex flex-col justify-between shadow-sm cursor-pointer relative overflow-hidden"
+                >
+                  <div
+                    class="absolute top-0 left-0 right-0 h-0.5 bg-primary-container"
+                  ></div>
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-primary-container text-[20px]"
+                        >notifications_active</span
+                      >
+                      <span
+                        class="font-headline-sm text-headline-sm text-surface-light"
+                        >Apple APNs</span
+                      >
+                    </div>
+                    <div
+                      class="w-8 h-4 bg-primary-container rounded-full p-0.5 flex justify-end items-center"
+                    >
+                      <div class="w-3 h-3 bg-surface-light rounded-full"></div>
+                    </div>
+                  </div>
+                  <p
+                    class="font-body-md text-body-md text-text-muted-dark mt-space-xs"
+                  >
+                    HTTP/2 Multiplexed Pipe
+                  </p>
+                  <div
+                    class="flex items-center justify-between mt-space-md pt-space-xs bg-surface-pitch/40 px-2 py-1.5 rounded-DEFAULT"
+                  >
+                    <div
+                      class="flex items-center gap-1 font-mono text-label-caps text-surface-light"
+                    >
+                      <span class="text-primary-container font-bold"
+                        >99.98%</span
+                      >
+                      <span class="text-text-muted-dark">HEALTH</span>
+                    </div>
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >18ms</span
+                    >
+                  </div>
+                </div>
+                <!-- Channel 2: Google FCM -->
+                <div
+                  class="group p-space-md rounded-DEFAULT bg-surface-card-dark hover:bg-surface-card-hover transition-all flex flex-col justify-between shadow-sm cursor-pointer relative overflow-hidden"
+                >
+                  <div
+                    class="absolute top-0 left-0 right-0 h-0.5 bg-primary-container"
+                  ></div>
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-primary-container text-[20px]"
+                        >android</span
+                      >
+                      <span
+                        class="font-headline-sm text-headline-sm text-surface-light"
+                        >Google FCM</span
+                      >
+                    </div>
+                    <div
+                      class="w-8 h-4 bg-primary-container rounded-full p-0.5 flex justify-end items-center"
+                    >
+                      <div class="w-3 h-3 bg-surface-light rounded-full"></div>
+                    </div>
+                  </div>
+                  <p
+                    class="font-body-md text-body-md text-text-muted-dark mt-space-xs"
+                  >
+                    HTTP v1 Protocol Async
+                  </p>
+                  <div
+                    class="flex items-center justify-between mt-space-md pt-space-xs bg-surface-pitch/40 px-2 py-1.5 rounded-DEFAULT"
+                  >
+                    <div
+                      class="flex items-center gap-1 font-mono text-label-caps text-surface-light"
+                    >
+                      <span class="text-primary-container font-bold"
+                        >99.94%</span
+                      >
+                      <span class="text-text-muted-dark">HEALTH</span>
+                    </div>
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >24ms</span
+                    >
+                  </div>
+                </div>
+                <!-- Channel 3: AWS SES -->
+                <div
+                  class="group p-space-md rounded-DEFAULT bg-surface-card-dark hover:bg-surface-card-hover transition-all flex flex-col justify-between shadow-sm cursor-pointer relative overflow-hidden"
+                >
+                  <div
+                    class="absolute top-0 left-0 right-0 h-0.5 bg-primary-container"
+                  ></div>
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-primary-container text-[20px]"
+                        >mail</span
+                      >
+                      <span
+                        class="font-headline-sm text-headline-sm text-surface-light"
+                        >AWS SES</span
+                      >
+                    </div>
+                    <div
+                      class="w-8 h-4 bg-primary-container rounded-full p-0.5 flex justify-end items-center"
+                    >
+                      <div class="w-3 h-3 bg-surface-light rounded-full"></div>
+                    </div>
+                  </div>
+                  <p
+                    class="font-body-md text-body-md text-text-muted-dark mt-space-xs"
+                  >
+                    DKIM/SPF High-Throughput
+                  </p>
+                  <div
+                    class="flex items-center justify-between mt-space-md pt-space-xs bg-surface-pitch/40 px-2 py-1.5 rounded-DEFAULT"
+                  >
+                    <div
+                      class="flex items-center gap-1 font-mono text-label-caps text-surface-light"
+                    >
+                      <span class="text-primary-container font-bold"
+                        >99.82%</span
+                      >
+                      <span class="text-text-muted-dark">HEALTH</span>
+                    </div>
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >120ms</span
+                    >
+                  </div>
+                </div>
+                <!-- Channel 4: Global SMPP -->
+                <div
+                  class="group p-space-md rounded-DEFAULT bg-surface-card-dark hover:bg-surface-card-hover transition-all flex flex-col justify-between shadow-sm cursor-pointer relative overflow-hidden"
+                >
+                  <div
+                    class="absolute top-0 left-0 right-0 h-0.5 bg-primary-container"
+                  ></div>
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-primary-container text-[20px]"
+                        >sms</span
+                      >
+                      <span
+                        class="font-headline-sm text-headline-sm text-surface-light"
+                        >Global SMS</span
+                      >
+                    </div>
+                    <div
+                      class="w-8 h-4 bg-primary-container rounded-full p-0.5 flex justify-end items-center"
+                    >
+                      <div class="w-3 h-3 bg-surface-light rounded-full"></div>
+                    </div>
+                  </div>
+                  <p
+                    class="font-body-md text-body-md text-text-muted-dark mt-space-xs"
+                  >
+                    Direct Tier-1 SMPP Trunk
+                  </p>
+                  <div
+                    class="flex items-center justify-between mt-space-md pt-space-xs bg-surface-pitch/40 px-2 py-1.5 rounded-DEFAULT"
+                  >
+                    <div
+                      class="flex items-center gap-1 font-mono text-label-caps text-surface-light"
+                    >
+                      <span class="text-primary-container font-bold"
+                        >99.91%</span
+                      >
+                      <span class="text-text-muted-dark">HEALTH</span>
+                    </div>
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >850ms</span
+                    >
+                  </div>
+                </div>
+                <!-- Channel 5: Webhook Relay (Idle) -->
+                <div
+                  class="group p-space-md rounded-DEFAULT bg-surface-card-dark/60 hover:bg-surface-card-hover transition-all flex flex-col justify-between shadow-sm cursor-pointer relative opacity-60 hover:opacity-100"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-text-muted-dark text-[20px]"
+                        >terminal</span
+                      >
+                      <span
+                        class="font-headline-sm text-headline-sm text-on-surface"
+                        >Webhooks</span
+                      >
+                    </div>
+                    <div
+                      class="w-8 h-4 bg-surface-container-high rounded-full p-0.5 flex justify-start items-center"
+                    >
+                      <div
+                        class="w-3 h-3 bg-text-muted-dark rounded-full"
+                      ></div>
+                    </div>
+                  </div>
+                  <p
+                    class="font-body-md text-body-md text-text-muted-dark mt-space-xs"
+                  >
+                    Secure Egress Relay
+                  </p>
+                  <div
+                    class="flex items-center justify-between mt-space-md pt-space-xs bg-surface-pitch/40 px-2 py-1.5 rounded-DEFAULT"
+                  >
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >STATE: IDLE</span
+                    >
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >OFFLINE</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </section>
+            <!-- Main 2-Column Split: Studio Canvas -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+              <!-- LEFT COLUMN: Audience & Payload Studio (7 cols) -->
+              <div class="xl:col-span-7 flex flex-col gap-space-md min-w-0">
+                <!-- Target Audience Card -->
+                <div
+                  class="p-space-lg rounded-DEFAULT bg-surface-card-dark flex flex-col gap-space-md shadow-sm"
+                >
+                  <div
+                    class="flex items-center justify-between flex-wrap gap-space-xs"
+                  >
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="font-mono text-label-caps text-text-muted-dark"
+                        >02 // SCOPE</span
+                      >
+                      <h2
+                        class="font-headline-sm text-headline-sm text-surface-light"
+                      >
+                        Audience Filtering &amp; Blast Radius
+                      </h2>
+                    </div>
+                    <div
+                      class="flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-primary-container/15 text-primary-container"
+                    >
+                      <span class="material-symbols-outlined text-[14px]"
+                        >group</span
+                      >
+                      <span
+                        class="font-mono text-label-caps text-label-caps font-bold"
+                        >128,492 Estimated Devices</span
+                      >
+                    </div>
+                  </div>
+                  <!-- Filter Pill Tags -->
+                  <div class="flex flex-wrap items-center gap-space-xs">
+                    <span
+                      class="px-space-sm py-1 rounded-full bg-surface-container-high font-mono text-label-md text-on-surface flex items-center gap-1.5"
+                    >
+                      <span class="text-text-muted-dark">tier:</span>
+                      <span class="text-primary-container font-semibold"
+                        >enterprise-tier-1</span
+                      >
+                      <button
+                        class="material-symbols-outlined text-[14px] hover:text-surface-light"
+                      >
+                        close
+                      </button>
+                    </span>
+                    <span
+                      class="px-space-sm py-1 rounded-full bg-surface-container-high font-mono text-label-md text-on-surface flex items-center gap-1.5"
+                    >
+                      <span class="text-text-muted-dark">region:</span>
+                      <span class="text-surface-light font-semibold"
+                        >apac-east + us-east</span
+                      >
+                      <button
+                        class="material-symbols-outlined text-[14px] hover:text-surface-light"
+                      >
+                        close
+                      </button>
+                    </span>
+                    <span
+                      class="px-space-sm py-1 rounded-full bg-surface-container-high font-mono text-label-md text-on-surface flex items-center gap-1.5"
+                    >
+                      <span class="text-text-muted-dark">role:</span>
+                      <span class="text-primary font-semibold"
+                        >secops-admin</span
+                      >
+                      <button
+                        class="material-symbols-outlined text-[14px] hover:text-surface-light"
+                      >
+                        close
+                      </button>
+                    </span>
+                    <button
+                      class="px-space-sm py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-text-muted-dark hover:text-on-surface font-label-md text-label-md flex items-center gap-1 transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[14px]"
+                        >add</span
+                      >
+                      <span>Filter Group</span>
+                    </button>
+                  </div>
+                  <!-- Priority & Safeguards Configuration -->
+                  <div
+                    class="grid grid-cols-1 md:grid-cols-3 gap-space-sm pt-space-xs"
+                  >
+                    <div
+                      class="bg-surface-pitch/60 p-space-sm rounded-DEFAULT flex flex-col gap-1"
+                    >
+                      <span
+                        class="font-mono text-label-caps text-text-muted-dark uppercase"
+                        >Priority Level</span
+                      >
+                      <div
+                        class="flex items-center justify-between text-error font-bold font-mono text-label-md"
+                      >
+                        <span class="flex items-center gap-1">
+                          <span
+                            class="w-2 h-2 rounded-full bg-primary-container"
+                          ></span>
+                          P0 - Instant Critical
+                        </span>
+                        <span class="material-symbols-outlined text-[16px]"
+                          >expand_more</span
+                        >
+                      </div>
+                    </div>
+                    <div
+                      class="bg-surface-pitch/60 p-space-sm rounded-DEFAULT flex flex-col gap-1"
+                    >
+                      <div class="flex items-center justify-between">
+                        <span
+                          class="font-mono text-label-caps text-text-muted-dark uppercase"
+                          >TTL Retention</span
+                        >
+                        <span
+                          class="font-mono text-label-caps text-primary-container"
+                          >1,800s</span
+                        >
+                      </div>
+                      <div
+                        class="w-full bg-surface-container-high h-1.5 rounded-full mt-2 overflow-hidden"
+                      >
+                        <div class="bg-primary-container h-full w-2/5"></div>
+                      </div>
+                    </div>
+                    <div
+                      class="bg-surface-pitch/60 p-space-sm rounded-DEFAULT flex flex-col gap-1"
+                    >
+                      <div class="flex items-center justify-between">
+                        <span
+                          class="font-mono text-label-caps text-text-muted-dark uppercase"
+                          >Rate Throttle</span
+                        >
+                        <span
+                          class="font-mono text-label-caps text-on-surface font-semibold"
+                          >25,000 req/s</span
+                        >
+                      </div>
+                      <div
+                        class="w-full bg-surface-container-high h-1.5 rounded-full mt-2 overflow-hidden"
+                      >
+                        <div class="bg-secondary h-full w-3/4"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- JSON Payload Editor -->
+                <div
+                  class="rounded-DEFAULT bg-surface-card-dark flex flex-col overflow-hidden shadow-sm"
+                >
+                  <!-- Editor Toolbar -->
+                  <div
+                    class="bg-surface-container-lowest px-space-md py-space-sm flex items-center justify-between flex-wrap gap-2"
+                  >
+                    <div
+                      class="flex items-center gap-space-xs font-mono text-label-caps text-on-surface-variant"
+                    >
+                      <span
+                        class="material-symbols-outlined text-[16px] text-primary-container"
+                        >code</span
+                      >
+                      <span>payload_dispatch_v2.json</span>
+                      <span
+                        class="px-1.5 py-0.5 rounded bg-surface-container text-text-muted-dark text-[10px]"
+                        >UTF-8</span
+                      >
+                    </div>
+                    <div class="flex items-center gap-space-xs">
+                      <button
+                        class="flex items-center gap-1 px-space-xs py-1 rounded bg-surface-container-high text-on-surface hover:text-surface-light font-label-caps text-label-caps font-mono transition-colors"
+                      >
+                        <span class="material-symbols-outlined text-[14px]"
+                          >auto_fix_high</span
+                        >
+                        <span>Prettify</span>
+                      </button>
+                      <button
+                        class="flex items-center gap-1 px-space-xs py-1 rounded bg-surface-container-high text-on-surface hover:text-surface-light font-label-caps text-label-caps font-mono transition-colors"
+                      >
+                        <span class="material-symbols-outlined text-[14px]"
+                          >content_copy</span
+                        >
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        class="flex items-center gap-1 px-space-xs py-1 rounded bg-surface-container text-primary-container font-label-caps text-label-caps font-mono font-bold"
+                      >
+                        <span class="material-symbols-outlined text-[14px]"
+                          >rule</span
+                        >
+                        <span>Validate</span>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Code Canvas with Line Numbers -->
+                  <div
+                    class="p-space-md bg-surface-pitch font-mono text-body-md text-on-surface flex overflow-x-auto leading-6"
+                  >
+                    <!-- Line numbers -->
+                    <div
+                      class="flex flex-col text-text-muted-dark select-none pr-space-md text-right font-mono opacity-40"
+                    >
+                      <span>01</span>
+                      <span>02</span>
+                      <span>03</span>
+                      <span>04</span>
+                      <span>05</span>
+                      <span>06</span>
+                      <span>07</span>
+                      <span>08</span>
+                      <span>09</span>
+                      <span>10</span>
+                      <span>11</span>
+                      <span>12</span>
+                      <span>13</span>
+                      <span>14</span>
+                      <span>15</span>
+                      <span>16</span>
+                      <span>17</span>
+                    </div>
+                    <!-- Syntax text content -->
+                    <div class="flex-1 whitespace-pre">
+                      <span class="text-text-muted-dark">{</span>
+                      <span class="text-primary font-semibold"
+                        >"dispatch_id"</span
+                      >: <span class="text-tertiary">"dsp_99a8x00f89e"</span>,
+                      <span class="text-primary font-semibold">"urgency"</span>:
+                      <span class="text-primary-container">"CRITICAL_P0"</span>,
+                      <span class="text-primary font-semibold"
+                        >"notification"</span
+                      >: {
+                      <span class="text-primary font-semibold">"title"</span>:
+                      <span class="text-tertiary"
+                        >"Critical Security Alert: Zero-Day Canary
+                        Triggered"</span
+                      >, <span class="text-primary font-semibold">"body"</span>:
+                      <span class="text-tertiary"
+                        >"Cluster [us-east-1] ingress breach detection flagged
+                        at 14:02:18 UTC."</span
+                      >,
+                      <span class="text-primary font-semibold">"badge"</span>:
+                      <span class="text-secondary font-bold">1</span>,
+                      <span class="text-primary font-semibold">"category"</span
+                      >: <span class="text-tertiary">"INFRA_SECURITY"</span>
+                      },
+                      <span class="text-primary font-semibold"
+                        >"delivery_matrix"</span
+                      >: {
+                      <span class="text-primary font-semibold">"apns_push"</span
+                      >: {
+                      <span class="text-primary font-semibold">"sound"</span>:
+                      <span class="text-tertiary">"sonar_alarm.caf"</span>,
+                      <span class="text-primary font-semibold"
+                        >"interruption_level"</span
+                      >: <span class="text-tertiary">"critical"</span> },
+                      <span class="text-primary font-semibold"
+                        >"fcm_android"</span
+                      >: {
+                      <span class="text-primary font-semibold">"priority"</span
+                      >: <span class="text-tertiary">"high"</span>,
+                      <span class="text-primary font-semibold"
+                        >"channel_id"</span
+                      >: <span class="text-tertiary">"secops_alarms"</span> },
+                      <span class="text-primary font-semibold"
+                        >"sms_fallback"</span
+                      >: <span class="text-secondary font-bold">true</span>
+                      },
+                      <span class="text-primary font-semibold"
+                        >"hmac_digest"</span
+                      >:
+                      <span class="text-tertiary"
+                        >"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"</span
+                      >
+                      <span class="text-text-muted-dark">}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- RIGHT COLUMN: Real-Time Preview & Mockups (5 cols) -->
+              <div class="xl:col-span-5 flex flex-col gap-space-md">
+                <!-- Preview Frame Wrapper -->
+                <div
+                  class="p-space-lg rounded-DEFAULT bg-surface-card-dark flex flex-col gap-space-md shadow-sm"
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono text-label-caps text-text-muted-dark"
+                      >03 // SIMULATION</span
+                    >
+                    <!-- Preview tabs -->
+                    <div
+                      class="flex items-center bg-surface-pitch rounded-full p-0.5 font-label-caps text-label-caps font-mono"
+                    >
+                      <button
+                        class="px-space-sm py-1 rounded-full bg-primary-container text-on-primary-container font-bold"
+                      >
+                        iOS Push
+                      </button>
+                      <button
+                        class="px-space-sm py-1 rounded-full text-text-muted-dark hover:text-surface-light"
+                      >
+                        Android
+                      </button>
+                      <button
+                        class="px-space-sm py-1 rounded-full text-text-muted-dark hover:text-surface-light"
+                      >
+                        HTML Email
+                      </button>
+                      <button
+                        class="px-space-sm py-1 rounded-full text-text-muted-dark hover:text-surface-light"
+                      >
+                        Raw
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Realistic iOS Device Lockscreen Mockup -->
+                  <div
+                    class="w-full bg-surface-pitch rounded-2xl p-space-md flex flex-col items-center justify-between min-h-[460px] relative overflow-hidden shadow-2xl"
+                  >
+                    <!-- Dynamic Island -->
+                    <div
+                      class="w-32 h-6 bg-surface-container-high rounded-full flex items-center justify-between px-3 z-10"
+                    >
+                      <span
+                        class="w-2.5 h-2.5 rounded-full bg-surface-pitch"
+                      ></span>
+                      <div class="flex items-center gap-1.5">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"
+                        ></span>
+                        <span class="font-mono text-[9px] text-surface-light"
+                          >PULSE</span
+                        >
+                      </div>
+                    </div>
+                    <!-- Lockscreen Time Display -->
+                    <div class="flex flex-col items-center mt-space-md z-10">
+                      <span
+                        class="font-mono text-label-caps text-text-muted-dark uppercase tracking-widest"
+                        >Tuesday, Oct 24</span
+                      >
+                      <span
+                        class="font-headline-xl text-headline-xl text-surface-light tracking-tight font-extrabold -mt-1"
+                        >09:41</span
+                      >
+                    </div>
+                    <!-- Foreground Banner Notification -->
+                    <div
+                      class="w-full max-w-sm bg-surface-card-dark/95 backdrop-blur-xl p-space-md rounded-xl shadow-[0_12px_36px_rgba(0,0,0,0.6)] z-10 flex flex-col gap-space-xs transform hover:scale-[1.01] transition-transform"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-space-xs">
+                          <div
+                            class="w-5 h-5 rounded-DEFAULT bg-primary-container flex items-center justify-center"
+                          >
+                            <span
+                              class="material-symbols-outlined text-[13px] text-surface-pitch font-bold"
+                              >bolt</span
+                            >
+                          </div>
+                          <span
+                            class="font-label-caps text-label-caps font-bold text-surface-light font-mono"
+                            >PULSE TELEMETRY</span
+                          >
+                        </div>
+                        <span
+                          class="font-mono text-label-caps text-text-muted-dark"
+                          >now</span
+                        >
+                      </div>
+                      <div class="flex flex-col gap-0.5 mt-1">
+                        <span
+                          class="font-headline-sm text-headline-sm text-surface-light leading-snug"
+                          >Critical Security Alert</span
+                        >
+                        <p
+                          class="font-body-md text-body-md text-on-surface leading-snug"
+                        >
+                          Cluster
+                          <span class="font-mono text-primary font-bold"
+                            >[us-east-1]</span
+                          >
+                          ingress breach canary triggered at 14:02:18 UTC.
+                        </p>
+                      </div>
+                      <!-- Interactive Lock Action buttons -->
+                      <div
+                        class="grid grid-cols-2 gap-space-xs mt-space-xs pt-space-xs"
+                      >
+                        <button
+                          class="py-1.5 px-space-xs bg-surface-container rounded-DEFAULT text-center font-label-md text-label-md text-primary-container font-semibold hover:bg-surface-container-high transition-colors"
+                        >
+                          Investigate Node
+                        </button>
+                        <button
+                          class="py-1.5 px-space-xs bg-surface-container-low rounded-DEFAULT text-center font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-colors"
+                        >
+                          Acknowledge
+                        </button>
+                      </div>
+                    </div>
+                    <!-- Simulated iOS Home Indicator -->
+                    <div
+                      class="w-32 h-1 bg-surface-light/30 rounded-full mt-auto mb-1 z-10"
+                    ></div>
+                    <!-- Subtle background ambient mesh -->
+                    <div
+                      class="absolute inset-0 bg-gradient-to-b from-primary-container/5 via-transparent to-surface-pitch/90 pointer-events-none"
+                    ></div>
+                  </div>
+                  <!-- Payload Telemetry Metadata specs -->
+                  <div
+                    class="p-space-sm rounded-DEFAULT bg-surface-container-lowest flex flex-col gap-space-xs font-mono"
+                  >
+                    <div
+                      class="flex items-center justify-between text-label-caps text-text-muted-dark"
+                    >
+                      <span>PAYLOAD FOOTPRINT</span>
+                      <span class="text-surface-light font-bold"
+                        >1.42 KB (OPTIMAL)</span
+                      >
+                    </div>
+                    <div
+                      class="flex items-center justify-between text-label-caps text-text-muted-dark"
+                    >
+                      <span>PROJECTED LATENCY</span>
+                      <span class="text-primary-container font-bold"
+                        >~34ms E2E</span
+                      >
+                    </div>
+                    <div
+                      class="flex items-center justify-between text-label-caps text-text-muted-dark truncate"
+                    >
+                      <span>DIGEST (SHA256)</span>
+                      <span
+                        class="text-text-muted-dark font-mono text-[10px] truncate max-w-[200px]"
+                        >e3b0c44298fc1c14...7852b855</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Bottom Sticky Action Dock -->
+            <div
+              class="sticky bottom-0 left-0 right-0 p-space-md rounded-DEFAULT bg-surface-card-dark/95 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.7)] flex flex-col sm:flex-row items-center justify-between gap-space-md z-30"
+            >
+              <div class="flex items-center gap-space-md">
+                <div class="flex items-center gap-space-xs text-on-surface">
+                  <span
+                    class="material-symbols-outlined text-primary-container text-[20px]"
+                    >check_circle</span
+                  >
+                  <span class="font-label-md text-label-md font-mono"
+                    >Ready for Dispatch Pipeline</span
+                  >
+                </div>
+                <button
+                  class="px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-mono transition-colors"
+                >
+                  Simulate Dry Run (Sandbox)
+                </button>
+              </div>
+              <div
+                class="flex items-center gap-space-sm w-full sm:w-auto justify-end"
+              >
+                <button
+                  class="px-space-md py-space-xs rounded-full text-text-muted-dark hover:text-on-surface font-label-md text-label-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="flex items-center gap-space-xs px-space-xl py-3 rounded-full bg-primary-container text-on-primary-container font-headline-sm text-headline-sm font-bold shadow-[0_8px_24px_-4px_rgba(254,88,36,0.5)] hover:bg-tertiary-container hover:text-on-tertiary-container transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                  id="dispatch-action-btn"
+                >
+                  <span>Dispatch Signal Immediately</span>
+                  <span class="material-symbols-outlined text-[20px]"
+                    >arrow_forward</span
+                  >
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <script>
+          (function initComposer() {
+            const dispatchBtn = document.getElementById("dispatch-action-btn");
+            if (dispatchBtn) {
+              dispatchBtn.addEventListener("click", () => {
+                const originalContent = dispatchBtn.innerHTML;
+                dispatchBtn.innerHTML = `
+          <span class="material-symbols-outlined text-[20px] animate-spin">sync</span>
+          <span>Broadcasting 128k Targets...</span>
+        `;
+                dispatchBtn.classList.add("opacity-90");
+                setTimeout(() => {
+                  dispatchBtn.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">done_all</span>
+            <span>Signal Dispatched (38ms)</span>
+          `;
+                  setTimeout(() => {
+                    dispatchBtn.innerHTML = originalContent;
+                    dispatchBtn.classList.remove("opacity-90");
+                  }, 2400);
+                }, 1200);
+              });
+            }
+          })();
+        </script>
+      </main>
+    </div>
+  </body>
+</html>

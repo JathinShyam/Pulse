@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: celery-low
-          image: pulse:latest  # Replace with your registry image
+          image: pulse:latest # Replace with your registry image
           command:
             - celery
             - -A

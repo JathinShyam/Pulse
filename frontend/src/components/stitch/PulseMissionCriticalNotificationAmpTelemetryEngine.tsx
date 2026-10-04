@@ -1214,8 +1214,8 @@ export default function PulseMissionCriticalNotificationAmpTelemetryEngine() {
             {/* Footer Bottom Copyright & Links */}
             <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-on-surface-subtle gap-4 font-mono">
               <div>
-                © 2025 Pulse Observability &amp; Delivery Suite. Phenomenon Tech
-                Aesthetic.
+                © 2025 Pulse Observability &amp; Delivery Suite. Phenomenon
+                Tech Aesthetic.
               </div>
               <div className="flex items-center gap-6">
                 <a className="hover:text-white transition-colors" href="#">

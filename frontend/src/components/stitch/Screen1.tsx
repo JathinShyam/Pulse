@@ -236,7 +236,11 @@ export default function Screen1() {
               >
                 {statusMsg && (
                   <div
-                    className={`p-space-md rounded font-mono text-sm ${statusMsg.startsWith("Success") ? "bg-emerald-400/10 text-emerald-400" : "bg-red-500/10 text-red-500"}`}
+                    className={`p-space-md rounded font-mono text-sm ${
+                      statusMsg.startsWith("Success")
+                        ? "bg-emerald-400/10 text-emerald-400"
+                        : "bg-red-500/10 text-red-500"
+                    }`}
                   >
                     {statusMsg}
                   </div>

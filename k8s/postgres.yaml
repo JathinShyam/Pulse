@@ -33,7 +33,7 @@ spec:
       app: pulse
       component: postgres
   strategy:
-    type: Recreate  # Single replica, no rolling update
+    type: Recreate # Single replica, no rolling update
   template:
     metadata:
       labels:

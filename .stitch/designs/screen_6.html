@@ -1,0 +1,1708 @@
+<!doctype html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta content="web_dashboard" name="shell-type" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&amp;family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @layer base {
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+        }
+        main > :first-child {
+          margin-top: 0 !important;
+        }
+        main > :last-child {
+          margin-bottom: 0 !important;
+        }
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "error-container": "#93000a",
+              "on-primary-fixed": "#3b0900",
+              "outline-variant": "#5b4039",
+              "border-light": "#E5E8EB",
+              "on-error": "#690005",
+              "surface-container": "#1e2021",
+              "on-primary-container": "#541100",
+              "text-muted-light": "#66707A",
+              "on-background": "#e2e2e3",
+              "surface-variant": "#333536",
+              "surface-pitch": "#050607",
+              "inverse-on-surface": "#2f3132",
+              surface: "#121415",
+              background: "#121415",
+              "surface-container-high": "#282a2b",
+              "text-muted-dark": "#8A929A",
+              "border-dark": "#23282D",
+              "on-secondary-container": "#b4b5b5",
+              "surface-container-low": "#1a1c1d",
+              "on-surface": "#e2e2e3",
+              "on-tertiary-fixed-variant": "#802900",
+              "surface-container-highest": "#333536",
+              "on-tertiary": "#5b1b00",
+              "surface-container-lowest": "#0c0e0f",
+              "on-secondary": "#2f3131",
+              "surface-light": "#FFFFFF",
+              "on-error-container": "#ffdad6",
+              "surface-card-light": "#F5F6F8",
+              tertiary: "#ffb59a",
+              "surface-card-dark": "#14171A",
+              "tertiary-container": "#ea6a37",
+              "surface-dim": "#121415",
+              "surface-tint": "#ffb5a0",
+              "secondary-fixed": "#e2e2e2",
+              "tertiary-fixed-dim": "#ffb59a",
+              "surface-bright": "#38393a",
+              "on-secondary-fixed": "#1a1c1c",
+              secondary: "#c6c6c7",
+              error: "#ffb4ab",
+              "on-secondary-fixed-variant": "#454747",
+              "primary-fixed": "#ffdbd1",
+              "primary-fixed-dim": "#ffb5a0",
+              outline: "#ab8980",
+              "tertiary-fixed": "#ffdbcf",
+              "surface-card-hover": "#1C2024",
+              "secondary-fixed-dim": "#c6c6c7",
+              primary: "#ffb5a0",
+              "on-tertiary-fixed": "#380d00",
+              "surface-dark": "#0B0D0E",
+              "inverse-surface": "#e2e2e3",
+              "inverse-primary": "#b02f00",
+              "on-surface-variant": "#e4beb4",
+              "on-tertiary-container": "#501600",
+              "on-primary-fixed-variant": "#862200",
+              "secondary-container": "#454747",
+              "on-primary": "#5f1500",
+              "primary-container": "#fe5824",
+            },
+            borderRadius: {
+              DEFAULT: "1rem",
+              lg: "2rem",
+              xl: "3rem",
+              full: "9999px",
+            },
+            spacing: {
+              "space-3xl": "6.5rem",
+              gutter: "1.5rem",
+              margin: "1.25rem",
+              "space-lg": "1.5rem",
+              "space-md": "1rem",
+              "space-xs": "0.25rem",
+              "space-2xl": "4rem",
+              "margin-tablet": "2.5rem",
+              "space-xl": "2.5rem",
+              "space-sm": "0.5rem",
+              "gutter-desktop": "2.5rem",
+              "margin-desktop": "4.5rem",
+            },
+            fontFamily: {
+              "label-caps": ["Hanken Grotesk"],
+              "headline-lg": ["Bricolage Grotesque"],
+              "body-md": ["Hanken Grotesk"],
+              "label-md": ["Hanken Grotesk"],
+              "headline-md": ["Bricolage Grotesque"],
+              "body-xl": ["Hanken Grotesk"],
+              "body-lg": ["Hanken Grotesk"],
+              "display-hero-mobile": ["Bricolage Grotesque"],
+              "headline-xl-mobile": ["Bricolage Grotesque"],
+              "headline-lg-mobile": ["Bricolage Grotesque"],
+              "display-hero": ["Bricolage Grotesque"],
+              "headline-xl": ["Bricolage Grotesque"],
+              "headline-sm": ["Bricolage Grotesque"],
+              "stat-counter": ["Bricolage Grotesque"],
+            },
+            fontSize: {
+              "label-caps": [
+                "11px",
+                {
+                  lineHeight: "14px",
+                  letterSpacing: "0.08em",
+                  fontWeight: "700",
+                },
+              ],
+              "headline-lg": [
+                "40px",
+                {
+                  lineHeight: "46px",
+                  letterSpacing: "-0.03em",
+                  fontWeight: "700",
+                },
+              ],
+              "body-md": [
+                "15px",
+                { lineHeight: "22px", letterSpacing: "0em", fontWeight: "400" },
+              ],
+              "label-md": [
+                "13px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-md": [
+                "28px",
+                {
+                  lineHeight: "34px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "body-xl": [
+                "20px",
+                {
+                  lineHeight: "30px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "400",
+                },
+              ],
+              "body-lg": [
+                "17px",
+                {
+                  lineHeight: "26px",
+                  letterSpacing: "-0.005em",
+                  fontWeight: "400",
+                },
+              ],
+              "display-hero-mobile": [
+                "44px",
+                {
+                  lineHeight: "48px",
+                  letterSpacing: "-0.03em",
+                  fontWeight: "800",
+                },
+              ],
+              "headline-xl-mobile": [
+                "34px",
+                {
+                  lineHeight: "40px",
+                  letterSpacing: "-0.025em",
+                  fontWeight: "700",
+                },
+              ],
+              "headline-lg-mobile": [
+                "28px",
+                {
+                  lineHeight: "34px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "700",
+                },
+              ],
+              "display-hero": [
+                "84px",
+                {
+                  lineHeight: "90px",
+                  letterSpacing: "-0.04em",
+                  fontWeight: "800",
+                },
+              ],
+              "headline-xl": [
+                "56px",
+                {
+                  lineHeight: "62px",
+                  letterSpacing: "-0.035em",
+                  fontWeight: "700",
+                },
+              ],
+              "headline-sm": [
+                "20px",
+                {
+                  lineHeight: "26px",
+                  letterSpacing: "-0.015em",
+                  fontWeight: "600",
+                },
+              ],
+              "stat-counter": [
+                "64px",
+                {
+                  lineHeight: "64px",
+                  letterSpacing: "-0.04em",
+                  fontWeight: "800",
+                },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-surface-pitch text-on-surface antialiased">
+    <aside
+      class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest z-50 flex flex-col pt-space-lg pb-space-lg justify-between transition-all"
+      id="app-sidebar"
+    >
+      <div class="px-space-lg flex flex-col gap-space-lg">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-space-sm">
+            <div
+              class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center"
+            >
+              <div
+                class="w-2.5 h-2.5 rounded-full bg-primary-container shadow-[0_0_14px_rgba(254,88,36,0.65)]"
+              ></div>
+            </div>
+            <div class="flex flex-col sidebar-expand-label">
+              <span
+                class="font-headline-sm text-headline-sm text-on-surface font-extrabold tracking-tight uppercase leading-none"
+                >PULSE</span
+              ><span
+                class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+                >ENGINE V4.19</span
+              >
+            </div>
+          </div>
+          <button
+            id="sidebar-toggle-btn"
+            class="w-8 h-8 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors"
+            title="Toggle Sidebar"
+          >
+            <span
+              class="material-symbols-outlined text-[18px] transition-transform"
+              id="sidebar-toggle-icon"
+              >first_page</span
+            >
+          </button>
+        </div>
+        <div
+          class="px-space-md py-space-sm rounded-DEFAULT bg-surface-container-low flex items-center justify-between overflow-hidden"
+        >
+          <div class="flex items-center gap-space-xs min-w-0">
+            <span
+              class="material-symbols-outlined text-primary-container text-[18px] shrink-0"
+              >hub</span
+            ><span
+              class="font-label-md text-label-md text-on-surface font-semibold truncate sidebar-expand-label"
+              >cluster-us-east-1</span
+            >
+          </div>
+          <span
+            class="material-symbols-outlined text-on-surface-variant text-[16px] shrink-0 sidebar-expand-label"
+            >unfold_more</span
+          >
+        </div>
+        <div
+          class="px-space-xs flex items-center justify-between sidebar-expand-label"
+        >
+          <span
+            class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+            >MONITORING</span
+          >
+          <div class="flex items-center gap-space-xs">
+            <span
+              class="w-2 h-2 rounded-full bg-primary-container animate-pulse"
+            ></span
+            ><span class="font-label-caps text-label-caps text-on-surface"
+              >38MS PING</span
+            >
+          </div>
+        </div>
+        <nav
+          class="flex flex-col gap-space-xs px-0"
+          data-active-classes="bg-primary-container text-on-primary-container font-bold rounded-DEFAULT"
+        >
+          <a
+            title="Overview"
+            class="flex items-center gap-space-md px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            data-path="overview"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >grid_view</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Overview</span
+            ></a
+          ><a
+            title="Analytics"
+            aria-current="page"
+            class="flex items-center gap-space-md px-space-md py-space-sm transition-all bg-primary-container text-on-primary-container font-bold rounded-DEFAULT"
+            data-path="analytics"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >monitoring</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Analytics</span
+            ></a
+          ><a
+            title="Dispatch"
+            class="flex items-center gap-space-md px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            data-path="dispatch"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >bolt</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Dispatch</span
+            ></a
+          ><a
+            title="Gateways"
+            class="flex items-center gap-space-md px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            data-path="gateways"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >alt_route</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Gateways</span
+            ></a
+          ><a
+            title="Logs"
+            class="flex items-center gap-space-md px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            data-path="logs"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >terminal</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Logs</span
+            ></a
+          ><a
+            title="Settings"
+            class="flex items-center gap-space-md px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            data-path="settings"
+            href="#"
+            ><span class="material-symbols-outlined text-[20px] shrink-0"
+              >tune</span
+            ><span class="font-label-md text-label-md sidebar-expand-label"
+              >Settings</span
+            ></a
+          >
+        </nav>
+      </div>
+      <div class="px-space-lg flex flex-col gap-space-md">
+        <a
+          title="Fast Dispatch"
+          class="w-full flex items-center justify-center gap-space-xs py-space-md bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-bold rounded-full shadow-[0_8px_24px_-4px_rgba(254,88,36,0.35)] transition-all overflow-hidden"
+          data-path="dispatch"
+          href="#"
+          ><span class="material-symbols-outlined text-[18px] shrink-0"
+            >rocket_launch</span
+          ><span class="sidebar-expand-label">Fast Dispatch</span></a
+        >
+        <div
+          class="flex items-center justify-between p-space-sm rounded-DEFAULT bg-surface-container-low overflow-hidden"
+        >
+          <div class="flex items-center gap-space-sm min-w-0">
+            <div
+              class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"
+            >
+              <span
+                class="material-symbols-outlined text-on-primary text-[18px]"
+                >person</span
+              >
+            </div>
+            <div class="flex flex-col truncate sidebar-expand-label">
+              <span class="font-label-md text-label-md text-on-surface truncate"
+                >alex.rivera@corp</span
+              ><span
+                class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+                >OPERATOR</span
+              >
+            </div>
+          </div>
+          <span
+            class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0 sidebar-expand-label"
+            >more_vert</span
+          >
+        </div>
+      </div>
+    </aside>
+    <div class="pl-72 transition-all" id="main-layout-wrapper">
+      <header
+        class="fixed top-0 left-72 right-0 h-20 bg-surface-pitch/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-xl transition-all"
+        id="app-header"
+      >
+        <div class="flex items-center gap-space-md">
+          <div
+            class="px-space-md py-space-xs rounded-full bg-surface-container-high flex items-center gap-space-xs"
+          >
+            <span class="w-2 h-2 rounded-full bg-primary-container"></span
+            ><span
+              class="font-label-caps text-label-caps text-on-surface uppercase"
+              >ALL GATEWAYS OPERATIONAL</span
+            >
+          </div>
+          <div
+            class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-caps text-label-caps uppercase"
+          >
+            <span class="material-symbols-outlined text-[16px]">sync</span
+            ><span class="">SYNCED VIA QUIC 0-RTT</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-md">
+          <div
+            class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container"
+          >
+            <span
+              class="material-symbols-outlined text-on-surface-variant text-[18px]"
+              >search</span
+            ><span class="font-label-md text-label-md text-on-surface-variant"
+              >Search payloads, events, keys...</span
+            >
+          </div>
+          <button
+            class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <span class="material-symbols-outlined text-[20px]"
+              >notifications</span
+            ></button
+          ><button
+            class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <span class="material-symbols-outlined text-[20px]">shield</span>
+          </button>
+          <div
+            class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"
+          >
+            <span class="material-symbols-outlined text-on-primary text-[18px]"
+              >person</span
+            >
+          </div>
+        </div>
+      </header>
+      <main
+        class="relative pt-20 bg-surface-pitch min-h-screen px-space-xl pb-space-2xl"
+      >
+        <div class="flex flex-col w-full gap-space-xl">
+          <!-- Command Header Bar -->
+          <header
+            class="relative flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg p-space-lg rounded-DEFAULT bg-surface-card-dark shadow-xl overflow-hidden"
+          >
+            <div
+              class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-primary-container/10 blur-3xl pointer-events-none"
+            ></div>
+            <div
+              class="absolute left-1/3 -bottom-20 w-64 h-64 rounded-full bg-cyan-500/5 blur-3xl pointer-events-none"
+            ></div>
+            <div class="flex flex-wrap items-center gap-space-md z-10">
+              <div
+                class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container-high shadow-inner"
+              >
+                <span class="relative flex h-2.5 w-2.5">
+                  <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"
+                  ></span>
+                  <span
+                    class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-container shadow-[0_0_8px_rgba(254,88,36,0.8)]"
+                  ></span>
+                </span>
+                <span
+                  class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider"
+                  >Cluster US-East-1 (Primary)</span
+                >
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark px-1.5 py-0.5 rounded bg-surface-container text-[9px]"
+                  >ACTIVE</span
+                >
+              </div>
+              <div
+                class="h-6 w-px bg-surface-container-highest hidden sm:block"
+              ></div>
+              <div
+                class="flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container-low"
+              >
+                <span
+                  class="material-symbols-outlined text-primary-container text-[18px]"
+                  >bolt</span
+                >
+                <div class="flex items-baseline gap-1.5">
+                  <span
+                    class="font-label-caps text-label-caps text-text-muted-dark uppercase"
+                    >Ingestion</span
+                  >
+                  <span
+                    class="font-headline-sm text-headline-sm text-on-surface font-mono"
+                    id="ticker-rate"
+                    >3,836.2</span
+                  >
+                  <span
+                    class="font-label-caps text-label-caps text-text-muted-dark lowercase"
+                    >msg/s</span
+                  >
+                </div>
+              </div>
+              <div
+                class="flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-lowest"
+              >
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span class="font-label-caps text-label-caps text-emerald-400"
+                  >0.00% LOSS</span
+                >
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-space-md z-10">
+              <!-- Timeframe Filter Tabs -->
+              <div
+                class="flex items-center p-1 rounded-full bg-surface-container-lowest"
+                id="timeframe-selector"
+              >
+                <button
+                  class="px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                  type="button"
+                >
+                  LIVE
+                </button>
+                <button
+                  class="px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                  type="button"
+                >
+                  1H
+                </button>
+                <button
+                  class="px-space-md py-1 rounded-full font-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                  type="button"
+                >
+                  24H
+                </button>
+                <button
+                  class="px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                  type="button"
+                >
+                  7D
+                </button>
+                <button
+                  class="px-space-md py-1 rounded-full font-label-md text-label-md bg-primary-container text-on-primary-container font-bold shadow-[0_4px_12px_-2px_rgba(254,88,36,0.4)]"
+                  type="button"
+                >
+                  30D
+                </button>
+              </div>
+              <!-- Action Button -->
+              <button
+                class="flex items-center gap-space-xs px-space-lg py-2.5 rounded-full bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-bold shadow-[0_8px_24px_-4px_rgba(254,88,36,0.4)] transition-all"
+                type="button"
+              >
+                <span class="material-symbols-outlined text-[18px]">bolt</span>
+                <span class="">Deploy Signal</span>
+              </button>
+            </div>
+          </header>
+          <!-- Metric Overview Row (4 KPI Cards) -->
+          <section
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md"
+          >
+            <!-- Deliverability -->
+            <div
+              class="relative p-space-lg rounded-DEFAULT bg-surface-card-dark shadow-md flex flex-col justify-between overflow-hidden group hover:bg-surface-card-hover transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark uppercase tracking-wider"
+                  >DELIVERABILITY</span
+                >
+                <div
+                  class="flex items-center gap-1 text-emerald-400 font-label-caps text-label-caps"
+                >
+                  <span class="material-symbols-outlined text-[14px]"
+                    >trending_up</span
+                  >
+                  <span class="">+0.12%</span>
+                </div>
+              </div>
+              <div class="mt-space-md flex items-baseline justify-between">
+                <span
+                  class="font-stat-counter text-headline-xl text-on-surface font-extrabold tracking-tight"
+                  >99.982<span class="text-headline-md text-text-muted-dark"
+                    >%</span
+                  ></span
+                >
+              </div>
+              <div class="mt-space-sm flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >SLA Baseline: 99.90%</span
+                >
+                <span
+                  class="font-label-caps text-label-caps text-primary-container"
+                  >HIGH CONF</span
+                >
+              </div>
+              <!-- Mini Sparkline inline SVG -->
+              <div class="mt-space-sm w-full h-8 flex items-end">
+                <svg
+                  class="w-full h-8 overflow-visible"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 160 32"
+                >
+                  <path
+                    d="M0 24 L20 22 L40 25 L60 16 L80 18 L100 12 L120 14 L140 8 L160 6"
+                    fill="none"
+                    stroke="#fe5824"
+                    stroke-linecap="round"
+                    stroke-width="2.5"
+                  ></path>
+                  <line
+                    stroke="#333536"
+                    stroke-dasharray="3 3"
+                    stroke-width="1"
+                    x1="0"
+                    x2="160"
+                    y1="20"
+                    y2="20"
+                  ></line>
+                </svg>
+              </div>
+            </div>
+            <!-- Total Volume -->
+            <div
+              class="relative p-space-lg rounded-DEFAULT bg-surface-card-dark shadow-md flex flex-col justify-between overflow-hidden group hover:bg-surface-card-hover transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark uppercase tracking-wider"
+                  >TOTAL VOLUME</span
+                >
+                <div
+                  class="flex items-center gap-1 text-primary-container font-label-caps text-label-caps"
+                >
+                  <span class="material-symbols-outlined text-[14px]"
+                    >north_east</span
+                  >
+                  <span class="">+14.2%</span>
+                </div>
+              </div>
+              <div class="mt-space-md flex items-baseline justify-between">
+                <span
+                  class="font-stat-counter text-headline-xl text-on-surface font-extrabold tracking-tight"
+                  >6.48<span class="text-headline-md text-text-muted-dark"
+                    >M</span
+                  ></span
+                >
+              </div>
+              <div class="mt-space-sm flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >Peak: 4,210 msg/sec</span
+                >
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >30-DAY WINDOW</span
+                >
+              </div>
+              <div class="mt-space-sm w-full h-8 flex items-end">
+                <svg
+                  class="w-full h-8 overflow-visible"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 160 32"
+                >
+                  <path
+                    d="M0 28 L20 26 L40 22 L60 25 L80 18 L100 15 L120 9 L140 12 L160 4"
+                    fill="none"
+                    stroke="#0891b2"
+                    stroke-linecap="round"
+                    stroke-width="2.5"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <!-- P95 Transit Latency -->
+            <div
+              class="relative p-space-lg rounded-DEFAULT bg-surface-card-dark shadow-md flex flex-col justify-between overflow-hidden group hover:bg-surface-card-hover transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark uppercase tracking-wider"
+                  >P95 TRANSIT LATENCY</span
+                >
+                <div
+                  class="flex items-center gap-1 text-emerald-400 font-label-caps text-label-caps"
+                >
+                  <span class="material-symbols-outlined text-[14px]"
+                    >arrow_downward</span
+                  >
+                  <span class="">-6ms OPT</span>
+                </div>
+              </div>
+              <div class="mt-space-md flex items-baseline justify-between">
+                <span
+                  class="font-stat-counter text-headline-xl text-on-surface font-extrabold tracking-tight"
+                  >38<span class="text-headline-md text-text-muted-dark"
+                    >ms</span
+                  ></span
+                >
+              </div>
+              <div class="mt-space-sm flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >Edge Ping: 18ms</span
+                >
+                <span class="font-label-caps text-label-caps text-emerald-400"
+                  >OPTIMAL</span
+                >
+              </div>
+              <div class="mt-space-sm w-full h-8 flex items-end">
+                <svg
+                  class="w-full h-8 overflow-visible"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 160 32"
+                >
+                  <path
+                    d="M0 10 L25 12 L50 9 L75 16 L100 14 L125 18 L160 22"
+                    fill="none"
+                    stroke="#a78bfa"
+                    stroke-linecap="round"
+                    stroke-width="2.5"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <!-- Active Routing Nodes -->
+            <div
+              class="relative p-space-lg rounded-DEFAULT bg-surface-card-dark shadow-md flex flex-col justify-between overflow-hidden group hover:bg-surface-card-hover transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark uppercase tracking-wider"
+                  >ACTIVE ROUTING NODES</span
+                >
+                <span
+                  class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+                ></span>
+              </div>
+              <div class="mt-space-md flex items-baseline justify-between">
+                <span
+                  class="font-stat-counter text-headline-xl text-on-surface font-extrabold tracking-tight"
+                  >48<span class="text-headline-md text-text-muted-dark"
+                    >/48</span
+                  ></span
+                >
+              </div>
+              <div class="mt-space-sm flex items-center justify-between">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >Mesh Convergence: 100%</span
+                >
+                <span class="font-label-caps text-label-caps text-emerald-400"
+                  >ALL HEALTHY</span
+                >
+              </div>
+              <!-- Node Grid Graphic -->
+              <div
+                class="mt-space-sm w-full h-8 grid grid-cols-12 gap-1 items-center"
+              >
+                <span class="h-2 rounded-sm bg-primary-container"></span>
+                <span class="h-2 rounded-sm bg-primary-container"></span>
+                <span class="h-2 rounded-sm bg-primary-container"></span>
+                <span class="h-2 rounded-sm bg-primary-container"></span>
+                <span class="h-2 rounded-sm bg-cyan-400"></span>
+                <span class="h-2 rounded-sm bg-cyan-400"></span>
+                <span class="h-2 rounded-sm bg-cyan-400"></span>
+                <span class="h-2 rounded-sm bg-cyan-400"></span>
+                <span class="h-2 rounded-sm bg-purple-400"></span>
+                <span class="h-2 rounded-sm bg-purple-400"></span>
+                <span class="h-2 rounded-sm bg-purple-400"></span>
+                <span class="h-2 rounded-sm bg-emerald-400"></span>
+              </div>
+            </div>
+          </section>
+          <!-- Primary Visualizer Card -->
+          <section
+            class="relative p-space-xl rounded-DEFAULT bg-surface-card-dark shadow-2xl flex flex-col gap-space-lg overflow-hidden"
+          >
+            <div
+              class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md"
+            >
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-space-sm">
+                  <h2
+                    class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight"
+                  >
+                    Dispatched Volume &amp; Throughput by Protocol
+                  </h2>
+                  <span
+                    class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-container/20 text-primary font-label-caps text-label-caps"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"
+                    ></span>
+                    LIVE STREAM
+                  </span>
+                </div>
+                <p class="font-body-md text-body-md text-text-muted-dark">
+                  Protocol density mapped dynamically across active distribution
+                  clusters
+                </p>
+              </div>
+              <!-- Controls & Legend -->
+              <div class="flex flex-wrap items-center gap-space-lg">
+                <div class="flex items-center gap-space-md">
+                  <div class="flex items-center gap-1.5">
+                    <span
+                      class="w-3 h-3 rounded-sm bg-primary-container"
+                    ></span>
+                    <span class="font-label-md text-label-md text-on-surface"
+                      >Push Notification</span
+                    >
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span
+                      class="w-3 h-3 rounded-sm"
+                      style="background-color: #0891b2"
+                    ></span
+                    ><span class="font-label-md text-label-md text-on-surface"
+                      >Transactional Email</span
+                    >
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded-sm bg-purple-400"></span>
+                    <span class="font-label-md text-label-md text-on-surface"
+                      >Direct SMS</span
+                    >
+                  </div>
+                </div>
+                <div
+                  class="flex items-center p-1 rounded-full bg-surface-container-lowest"
+                >
+                  <button
+                    class="px-space-md py-1 rounded-full font-label-md text-label-md bg-surface-container-high text-on-surface font-semibold shadow-sm"
+                    type="button"
+                  >
+                    Hourly
+                  </button>
+                  <button
+                    class="px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                    type="button"
+                  >
+                    Daily
+                  </button>
+                  <button
+                    class="px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all"
+                    type="button"
+                  >
+                    Weekly
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Chart Canvas Container -->
+            <div
+              class="relative w-full h-80 rounded-DEFAULT bg-surface-pitch/70 p-space-md overflow-hidden flex flex-col justify-between"
+            >
+              <!-- Background Grid lines -->
+              <div
+                class="absolute inset-0 flex flex-col justify-between p-space-md pointer-events-none opacity-20"
+              >
+                <div class="w-full h-px bg-surface-container-highest"></div>
+                <div class="w-full h-px bg-surface-container-highest"></div>
+                <div class="w-full h-px bg-surface-container-highest"></div>
+                <div class="w-full h-px bg-surface-container-highest"></div>
+                <div class="w-full h-px bg-surface-container-highest"></div>
+              </div>
+              <!-- Main Multi-line SVG chart with smooth curves and gradient fills -->
+              <div class="relative w-full h-full">
+                <svg
+                  class="w-full h-full overflow-visible"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 1000 240"
+                >
+                  <defs>
+                    <linearGradient
+                      id="grad-push"
+                      x1="0%"
+                      x2="0%"
+                      y1="0%"
+                      y2="100%"
+                    >
+                      <stop
+                        offset="0%"
+                        stop-color="#fe5824"
+                        stop-opacity="0.25"
+                      ></stop>
+                      <stop
+                        offset="100%"
+                        stop-color="#fe5824"
+                        stop-opacity="0.0"
+                      ></stop>
+                    </linearGradient>
+                    <lineargradient
+                      id="grad-email"
+                      x1="0%"
+                      x2="0%"
+                      y1="0%"
+                      y2="100%"
+                    >
+                      <stop
+                        offset="0%"
+                        stop-color="#0891b2"
+                        stop-opacity="0.28"
+                      ></stop>
+                      <stop
+                        offset="100%"
+                        stop-color="#0891b2"
+                        stop-opacity="0.0"
+                      ></stop>
+                    </lineargradient>
+                    <linearGradient
+                      id="grad-sms"
+                      x1="0%"
+                      x2="0%"
+                      y1="0%"
+                      y2="100%"
+                    >
+                      <stop
+                        offset="0%"
+                        stop-color="#a78bfa"
+                        stop-opacity="0.12"
+                      ></stop>
+                      <stop
+                        offset="100%"
+                        stop-color="#a78bfa"
+                        stop-opacity="0.0"
+                      ></stop>
+                    </linearGradient>
+                  </defs>
+                  <!-- Push Stream (Vibrant Orange) Area + Line -->
+                  <polygon
+                    fill="url(#grad-push)"
+                    points="0,240 0,140 100,120 200,150 300,90 400,110 500,60 600,40 700,95 800,75 900,110 1000,65 1000,240"
+                  ></polygon>
+                  <path
+                    d="M0,140 C100,120 150,150 200,150 C250,150 270,90 300,90 C330,90 370,110 400,110 C450,110 470,60 500,60 C530,60 570,40 600,40 C630,40 670,95 700,95 C730,95 770,75 800,75 C830,75 870,110 900,110 C930,110 970,65 1000,65"
+                    fill="none"
+                    stroke="#fe5824"
+                    stroke-linecap="round"
+                    stroke-width="3"
+                  ></path>
+                  <!-- Email Stream (Cyan) Area + Line -->
+                  <polygon
+                    fill="url(#grad-email)"
+                    points="0,240 0,170 100,160 200,180 300,130 400,140 500,115 600,90 700,130 800,120 900,145 1000,110 1000,240"
+                  ></polygon>
+                  <path
+                    d="M0,170 C100,160 150,180 200,180 C250,180 270,130 300,130 C330,130 370,140 400,140 C450,140 470,115 500,115 C530,115 570,90 600,90 C630,90 670,130 700,130 C730,130 770,120 800,120 C830,120 870,145 900,145 C930,145 970,110 1000,110"
+                    fill="none"
+                    stroke="#0891b2"
+                    stroke-linecap="round"
+                    stroke-width="2.5"
+                  ></path>
+                  <!-- Direct SMS (Violet) Area + Line -->
+                  <polygon
+                    fill="url(#grad-sms)"
+                    points="0,240 0,200 100,195 200,210 300,175 400,185 500,160 600,150 700,170 800,165 900,180 1000,155 1000,240"
+                  ></polygon>
+                  <path
+                    d="M0,200 C100,195 150,210 200,210 C250,210 270,175 300,175 C330,175 370,185 400,185 C450,185 470,160 500,160 C530,160 570,150 600,150 C630,150 670,170 700,170 C730,170 770,165 800,165 C830,165 870,180 900,180 C930,180 970,155 1000,155"
+                    fill="none"
+                    stroke="#a78bfa"
+                    stroke-dasharray="4 2"
+                    stroke-linecap="round"
+                    stroke-width="2"
+                  ></path>
+                  <!-- Peak Marker Line at X=600 -->
+                  <line
+                    opacity="0.8"
+                    stroke="#fe5824"
+                    stroke-dasharray="3 3"
+                    stroke-width="1.5"
+                    x1="600"
+                    x2="600"
+                    y1="20"
+                    y2="240"
+                  ></line>
+                  <circle
+                    cx="600"
+                    cy="40"
+                    fill="#fe5824"
+                    r="5"
+                    stroke="#ffffff"
+                    stroke-width="2"
+                  ></circle>
+                  <circle
+                    cx="600"
+                    cy="90"
+                    fill="#0891b2"
+                    r="4"
+                    stroke="#ffffff"
+                    stroke-width="1.5"
+                  ></circle>
+                  <circle
+                    cx="600"
+                    cy="150"
+                    fill="#a78bfa"
+                    r="4"
+                    stroke="#ffffff"
+                    stroke-width="1.5"
+                  ></circle>
+                </svg>
+                <!-- Tooltip Overlay -->
+                <div
+                  class="absolute left-[54%] top-4 -translate-x-1/2 p-space-md rounded-DEFAULT bg-surface-container-high/95 backdrop-blur-md shadow-2xl z-20 flex flex-col gap-2 min-w-[210px] pointer-events-none"
+                >
+                  <div
+                    class="flex items-center justify-between border-b border-surface-container-highest pb-1.5"
+                  >
+                    <span
+                      class="font-label-caps text-label-caps text-on-surface font-mono"
+                      >OCT 24 • 18:00 UTC</span
+                    >
+                    <span
+                      class="font-label-caps text-label-caps text-primary-container font-bold"
+                      >PEAK SURGE</span
+                    >
+                  </div>
+                  <div
+                    class="flex flex-col gap-1.5 font-label-md text-label-md"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span
+                        class="flex items-center gap-1.5 text-on-surface-variant"
+                        ><span
+                          class="w-2 h-2 rounded-full bg-primary-container"
+                        ></span
+                        >Push APNs/FCM</span
+                      >
+                      <span class="font-mono text-on-surface font-bold"
+                        >142,480/s</span
+                      >
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span
+                        class="flex items-center gap-1.5 text-on-surface-variant"
+                        ><span
+                          class="w-2 h-2 rounded-full"
+                          style="background-color: #0891b2"
+                        ></span
+                        >SES Transact</span
+                      >
+                      <span class="font-mono text-on-surface font-bold"
+                        >88,210/s</span
+                      >
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span
+                        class="flex items-center gap-1.5 text-on-surface-variant"
+                        ><span class="w-2 h-2 rounded-full bg-purple-400"></span
+                        >Carrier SMPP</span
+                      >
+                      <span class="font-mono text-on-surface font-bold"
+                        >45,102/s</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- X-Axis Labels -->
+              <div
+                class="flex justify-between items-center px-2 pt-2 text-text-muted-dark font-label-caps text-label-caps font-mono"
+              >
+                <span class="">12:00 UTC</span>
+                <span class="">14:00 UTC</span>
+                <span class="">16:00 UTC</span>
+                <span class="text-primary-container font-bold"
+                  >18:00 UTC (PEAK)</span
+                >
+                <span class="">20:00 UTC</span>
+                <span class="">22:00 UTC</span>
+                <span class="">00:00 UTC</span>
+              </div>
+              <div id="sidebar-state-script">
+                <script>
+                  (function () {
+                    const toggleBtn =
+                      document.getElementById("sidebar-toggle-btn");
+                    const sidebar = document.getElementById("app-sidebar");
+                    const mainWrap = document.getElementById(
+                      "main-layout-wrapper",
+                    );
+                    const appHeader = document.getElementById("app-header");
+                    const toggleIcon = document.getElementById(
+                      "sidebar-toggle-icon",
+                    );
+                    if (!toggleBtn || !sidebar) return;
+                    let collapsed = false;
+                    toggleBtn.addEventListener("click", function () {
+                      collapsed = !collapsed;
+                      if (collapsed) {
+                        sidebar.classList.remove("w-72");
+                        sidebar.classList.add("w-20");
+                        if (mainWrap) {
+                          mainWrap.classList.remove("pl-72");
+                          mainWrap.classList.add("pl-20");
+                        }
+                        if (appHeader) {
+                          appHeader.classList.remove("left-72");
+                          appHeader.classList.add("left-20");
+                        }
+                        document
+                          .querySelectorAll(".sidebar-expand-label")
+                          .forEach((el) => el.classList.add("hidden"));
+                        if (toggleIcon) {
+                          toggleIcon.textContent = "last_page";
+                        }
+                      } else {
+                        sidebar.classList.remove("w-20");
+                        sidebar.classList.add("w-72");
+                        if (mainWrap) {
+                          mainWrap.classList.remove("pl-20");
+                          mainWrap.classList.add("pl-72");
+                        }
+                        if (appHeader) {
+                          appHeader.classList.remove("left-20");
+                          appHeader.classList.add("left-72");
+                        }
+                        document
+                          .querySelectorAll(".sidebar-expand-label")
+                          .forEach((el) => el.classList.remove("hidden"));
+                        if (toggleIcon) {
+                          toggleIcon.textContent = "first_page";
+                        }
+                      }
+                    });
+                  })();
+                </script>
+              </div>
+            </div>
+          </section>
+          <!-- Lower Grid (Two Panels) -->
+          <section class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+            <!-- Left Panel: Live Ledger (7 cols) -->
+            <div
+              class="xl:col-span-7 flex flex-col p-space-xl rounded-DEFAULT bg-surface-card-dark shadow-xl overflow-hidden gap-space-md"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-space-sm">
+                  <span
+                    class="material-symbols-outlined text-primary-container text-[22px]"
+                    >receipt_long</span
+                  >
+                  <div>
+                    <h3
+                      class="font-headline-sm text-headline-sm text-on-surface font-bold"
+                    >
+                      Transmission Feed
+                    </h3>
+                    <p
+                      class="font-label-caps text-label-caps text-text-muted-dark uppercase"
+                    >
+                      REAL-TIME EGRESS DISPATCH AUDIT
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-space-xs">
+                  <button
+                    class="px-space-md py-1 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-caps text-label-caps transition-colors flex items-center gap-1"
+                    type="button"
+                  >
+                    <span class="material-symbols-outlined text-[14px]"
+                      >filter_list</span
+                    >
+                    FILTER
+                  </button>
+                  <button
+                    class="w-7 h-7 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors"
+                    type="button"
+                  >
+                    <span class="material-symbols-outlined text-[16px]"
+                      >file_download</span
+                    >
+                  </button>
+                </div>
+              </div>
+              <!-- Ledger Table -->
+              <div class="overflow-x-auto">
+                <table class="w-full text-left font-label-md text-label-md">
+                  <thead>
+                    <tr
+                      class="bg-surface-container-lowest/60 text-text-muted-dark font-label-caps text-label-caps"
+                    >
+                      <th class="py-2.5 px-3 rounded-l-DEFAULT">STATUS</th>
+                      <th class="py-2.5 px-3">CHANNEL</th>
+                      <th class="py-2.5 px-3">RECIPIENT HASH</th>
+                      <th class="py-2.5 px-3">ROUTE LATENCY</th>
+                      <th class="py-2.5 px-3 rounded-r-DEFAULT text-right">
+                        TIMESTAMP
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-container-high/40">
+                    <!-- Row 1 -->
+                    <tr
+                      class="hover:bg-surface-container-high/30 transition-colors"
+                    >
+                      <td class="py-3 px-3">
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-label-caps text-label-caps"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-emerald-400"
+                          ></span>
+                          DELIVERED
+                        </span>
+                      </td>
+                      <td
+                        class="py-3 px-3 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span
+                          class="material-symbols-outlined text-primary-container text-[16px]"
+                          >notifications_active</span
+                        >
+                        APNs HTTP/2
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        #7f9a2e...c419
+                      </td>
+                      <td class="py-3 px-3 font-mono text-on-surface">22ms</td>
+                      <td
+                        class="py-3 px-3 font-mono text-text-muted-dark text-right"
+                      >
+                        18:04:12.891
+                      </td>
+                    </tr>
+                    <!-- Row 2 -->
+                    <tr
+                      class="hover:bg-surface-container-high/30 transition-colors"
+                    >
+                      <td class="py-3 px-3">
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-label-caps text-label-caps"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-spin"
+                          ></span>
+                          ROUTING
+                        </span>
+                      </td>
+                      <td
+                        class="py-3 px-3 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span
+                          class="material-symbols-outlined text-cyan-400 text-[16px]"
+                          >mail</span
+                        >
+                        AWS SES TLS
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        #02ab41...89ff
+                      </td>
+                      <td class="py-3 px-3 font-mono text-cyan-400">41ms</td>
+                      <td
+                        class="py-3 px-3 font-mono text-text-muted-dark text-right"
+                      >
+                        18:04:12.742
+                      </td>
+                    </tr>
+                    <!-- Row 3 -->
+                    <tr
+                      class="hover:bg-surface-container-high/30 transition-colors"
+                    >
+                      <td class="py-3 px-3">
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-label-caps text-label-caps"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-amber-400"
+                          ></span>
+                          QUEUED
+                        </span>
+                      </td>
+                      <td
+                        class="py-3 px-3 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span
+                          class="material-symbols-outlined text-purple-400 text-[16px]"
+                          >sms</span
+                        >
+                        Carrier SMPP
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        #bc3488...012a
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        --
+                      </td>
+                      <td
+                        class="py-3 px-3 font-mono text-text-muted-dark text-right"
+                      >
+                        18:04:12.605
+                      </td>
+                    </tr>
+                    <!-- Row 4 -->
+                    <tr
+                      class="hover:bg-surface-container-high/30 transition-colors"
+                    >
+                      <td class="py-3 px-3">
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-label-caps text-label-caps"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-emerald-400"
+                          ></span>
+                          DELIVERED
+                        </span>
+                      </td>
+                      <td
+                        class="py-3 px-3 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span
+                          class="material-symbols-outlined text-primary-container text-[16px]"
+                          >android</span
+                        >
+                        FCM Google V1
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        #e9112a...77dd
+                      </td>
+                      <td class="py-3 px-3 font-mono text-on-surface">19ms</td>
+                      <td
+                        class="py-3 px-3 font-mono text-text-muted-dark text-right"
+                      >
+                        18:04:12.430
+                      </td>
+                    </tr>
+                    <!-- Row 5 -->
+                    <tr
+                      class="hover:bg-surface-container-high/30 transition-colors"
+                    >
+                      <td class="py-3 px-3">
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-label-caps text-label-caps"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-emerald-400"
+                          ></span>
+                          DELIVERED
+                        </span>
+                      </td>
+                      <td
+                        class="py-3 px-3 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span
+                          class="material-symbols-outlined text-primary-container text-[16px]"
+                          >notifications_active</span
+                        >
+                        APNs HTTP/2
+                      </td>
+                      <td class="py-3 px-3 font-mono text-text-muted-dark">
+                        #18ee50...ab29
+                      </td>
+                      <td class="py-3 px-3 font-mono text-on-surface">26ms</td>
+                      <td
+                        class="py-3 px-3 font-mono text-text-muted-dark text-right"
+                      >
+                        18:04:12.188
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between pt-2">
+                <span
+                  class="font-label-caps text-label-caps text-text-muted-dark"
+                  >Displaying 5 of 3,842 buffer items</span
+                >
+                <button
+                  class="text-primary hover:text-primary-container font-label-caps text-label-caps flex items-center gap-1"
+                  type="button"
+                >
+                  OPEN STREAM INSPECTOR
+                  <span class="material-symbols-outlined text-[14px]"
+                    >arrow_forward</span
+                  >
+                </button>
+              </div>
+              <div id="sidebar-state-script">
+                <script>
+                  (function () {
+                    const toggleBtn =
+                      document.getElementById("sidebar-toggle-btn");
+                    const sidebar = document.getElementById("app-sidebar");
+                    const mainWrap = document.getElementById(
+                      "main-layout-wrapper",
+                    );
+                    const appHeader = document.getElementById("app-header");
+                    const toggleIcon = document.getElementById(
+                      "sidebar-toggle-icon",
+                    );
+                    if (!toggleBtn || !sidebar) return;
+                    let collapsed = false;
+                    toggleBtn.addEventListener("click", function () {
+                      collapsed = !collapsed;
+                      if (collapsed) {
+                        sidebar.classList.remove("w-72");
+                        sidebar.classList.add("w-20");
+                        if (mainWrap) {
+                          mainWrap.classList.remove("pl-72");
+                          mainWrap.classList.add("pl-20");
+                        }
+                        if (appHeader) {
+                          appHeader.classList.remove("left-72");
+                          appHeader.classList.add("left-20");
+                        }
+                        document
+                          .querySelectorAll(".sidebar-expand-label")
+                          .forEach((el) => el.classList.add("hidden"));
+                        if (toggleIcon) {
+                          toggleIcon.textContent = "last_page";
+                        }
+                      } else {
+                        sidebar.classList.remove("w-20");
+                        sidebar.classList.add("w-72");
+                        if (mainWrap) {
+                          mainWrap.classList.remove("pl-20");
+                          mainWrap.classList.add("pl-72");
+                        }
+                        if (appHeader) {
+                          appHeader.classList.remove("left-20");
+                          appHeader.classList.add("left-72");
+                        }
+                        document
+                          .querySelectorAll(".sidebar-expand-label")
+                          .forEach((el) => el.classList.remove("hidden"));
+                        if (toggleIcon) {
+                          toggleIcon.textContent = "first_page";
+                        }
+                      }
+                    });
+                  })();
+                </script>
+              </div>
+            </div>
+            <!-- Right Panel: Carrier & Gateway Health (5 cols) -->
+            <div
+              class="xl:col-span-5 flex flex-col p-space-xl rounded-DEFAULT bg-surface-card-dark shadow-xl overflow-hidden gap-space-lg"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-space-sm">
+                  <span
+                    class="material-symbols-outlined text-primary-container text-[22px]"
+                    >dns</span
+                  >
+                  <div>
+                    <h3
+                      class="font-headline-sm text-headline-sm text-on-surface font-bold"
+                    >
+                      Carrier &amp; Gateway SLA
+                    </h3>
+                    <p
+                      class="font-label-caps text-label-caps text-text-muted-dark uppercase"
+                    >
+                      SYSTEM HEALTH &amp; ROUTE COMPLIANCE
+                    </p>
+                  </div>
+                </div>
+                <span
+                  class="px-2 py-0.5 rounded bg-surface-container-high text-emerald-400 font-label-caps text-label-caps"
+                  >99.98% OK</span
+                >
+              </div>
+              <!-- Donut SLA Ring + Gateways Stack -->
+              <div
+                class="grid grid-cols-1 sm:grid-cols-12 gap-space-md items-center"
+              >
+                <!-- Radial SLA Gauge -->
+                <div
+                  class="sm:col-span-5 flex flex-col items-center justify-center p-space-sm"
+                >
+                  <div
+                    class="relative w-36 h-36 flex items-center justify-center"
+                  >
+                    <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                      <!-- Background circle -->
+                      <circle
+                        cx="50"
+                        cy="50"
+                        fill="transparent"
+                        r="40"
+                        stroke="#1e2021"
+                        stroke-width="9"
+                      ></circle>
+                      <!-- Progress fill (99.98%) -->
+                      <circle
+                        cx="50"
+                        cy="50"
+                        fill="transparent"
+                        r="40"
+                        stroke="#fe5824"
+                        stroke-dasharray="251.2"
+                        stroke-dashoffset="1.2"
+                        stroke-linecap="round"
+                        stroke-width="9"
+                      ></circle>
+                    </svg>
+                    <div
+                      class="absolute flex flex-col items-center justify-center text-center"
+                    >
+                      <span
+                        class="font-headline-md text-headline-md text-on-surface font-extrabold leading-none"
+                        >99.9<span class="text-primary-container">%</span></span
+                      >
+                      <span
+                        class="font-label-caps text-label-caps text-text-muted-dark uppercase text-[10px]"
+                        >UPTIME SLA</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <!-- Latency by Carrier Breakdown -->
+                <div class="sm:col-span-7 flex flex-col gap-space-sm">
+                  <!-- Gateway 1: APNs -->
+                  <div
+                    class="p-2.5 rounded-DEFAULT bg-surface-container-low flex flex-col gap-1"
+                  >
+                    <div
+                      class="flex items-center justify-between font-label-md text-label-md"
+                    >
+                      <span class="text-on-surface font-semibold"
+                        >Apple APNs</span
+                      >
+                      <span class="font-mono text-emerald-400">18ms</span>
+                    </div>
+                    <div
+                      class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"
+                    >
+                      <div
+                        class="h-full bg-emerald-400 rounded-full"
+                        style="width: 92%"
+                      ></div>
+                    </div>
+                    <div
+                      class="flex justify-between font-label-caps text-label-caps text-text-muted-dark text-[9px]"
+                    >
+                      <span class="">Throughput: 1.8M/hr</span>
+                      <span class="">Success: 99.99%</span>
+                    </div>
+                  </div>
+                  <!-- Gateway 2: FCM -->
+                  <div
+                    class="p-2.5 rounded-DEFAULT bg-surface-container-low flex flex-col gap-1"
+                  >
+                    <div
+                      class="flex items-center justify-between font-label-md text-label-md"
+                    >
+                      <span class="text-on-surface font-semibold"
+                        >Google FCM</span
+                      >
+                      <span class="font-mono text-emerald-400">22ms</span>
+                    </div>
+                    <div
+                      class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"
+                    >
+                      <div
+                        class="h-full bg-primary-container rounded-full"
+                        style="width: 88%"
+                      ></div>
+                    </div>
+                    <div
+                      class="flex justify-between font-label-caps text-label-caps text-text-muted-dark text-[9px]"
+                    >
+                      <span class="">Throughput: 2.4M/hr</span>
+                      <span class="">Success: 99.98%</span>
+                    </div>
+                  </div>
+                  <!-- Gateway 3: AWS SES -->
+                  <div
+                    class="p-2.5 rounded-DEFAULT bg-surface-container-low flex flex-col gap-1"
+                  >
+                    <div
+                      class="flex items-center justify-between font-label-md text-label-md"
+                    >
+                      <span class="text-on-surface font-semibold"
+                        >AWS SES Mail</span
+                      ><span class="font-mono" style="color: #0891b2"
+                        >46ms</span
+                      >
+                    </div>
+                    <div
+                      class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"
+                    >
+                      <div
+                        class="h-full rounded-full"
+                        style="width: 78%; background-color: #0891b2"
+                      ></div>
+                    </div>
+                    <div
+                      class="flex justify-between font-label-caps text-label-caps text-text-muted-dark text-[9px]"
+                    >
+                      <span class="">Throughput: 1.1M/hr</span
+                      ><span class="">Success: 99.95%</span>
+                    </div>
+                  </div>
+                  <!-- Gateway 4: Carrier SMPP -->
+                  <div
+                    class="p-2.5 rounded-DEFAULT bg-surface-container-low flex flex-col gap-1"
+                  >
+                    <div
+                      class="flex items-center justify-between font-label-md text-label-md"
+                    >
+                      <span class="text-on-surface font-semibold"
+                        >Global SMPP (SMS)</span
+                      >
+                      <span class="font-mono text-purple-400">82ms</span>
+                    </div>
+                    <div
+                      class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"
+                    >
+                      <div
+                        class="h-full bg-purple-400 rounded-full"
+                        style="width: 65%"
+                      ></div>
+                    </div>
+                    <div
+                      class="flex justify-between font-label-caps text-label-caps text-text-muted-dark text-[9px]"
+                    >
+                      <span class="">Throughput: 620k/hr</span>
+                      <span class="">Success: 99.89%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <script>
+          // Subtle live ticker fluctuation for ingestion rate
+          (function () {
+            const ticker = document.getElementById("ticker-rate");
+            if (!ticker) return;
+            setInterval(() => {
+              const base = 3840;
+              const variation = (Math.random() * 8 - 4).toFixed(1);
+              const val = (base + parseFloat(variation)).toLocaleString(
+                "en-US",
+                { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+              );
+              ticker.textContent = val;
+            }, 2400);
+
+            // Interactive timeframe selector
+            const selector = document.getElementById("timeframe-selector");
+            if (selector) {
+              selector.querySelectorAll("button").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                  selector.querySelectorAll("button").forEach((b) => {
+                    b.className =
+                      "px-space-md py-1 rounded-full font-label-md text-label-md text-text-muted-dark hover:text-on-surface transition-all";
+                  });
+                  btn.className =
+                    "px-space-md py-1 rounded-full font-label-md text-label-md bg-primary-container text-on-primary-container font-bold shadow-[0_4px_12px_-2px_rgba(254,88,36,0.4)]";
+                });
+              });
+            }
+          })();
+        </script>
+      </main>
+    </div>
+  </body>
+</html>
