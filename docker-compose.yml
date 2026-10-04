@@ -86,5 +86,13 @@ services:
     env_file:
       - .env
 
+  frontend:
+    build:
+      context: ./frontend
+      network: host
+    network_mode: "host"
+    environment:
+      - NODE_ENV=production
+
 volumes:
   postgres_data:
