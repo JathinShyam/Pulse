@@ -4,7 +4,6 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from .models import NotificationLog, NotificationTemplate
-from .serializers import SendNotificationSerializer
 
 
 class IdempotencyTest(TestCase):
@@ -97,7 +96,6 @@ class IdempotencyTest(TestCase):
             status="sent",  # Already sent
         )
 
-        initial_attempts = log.attempts
         log.atomic_update_status("retrying", error_message="Test error")
         log.refresh_from_db()
 

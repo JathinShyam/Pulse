@@ -1,0 +1,5 @@
+[tool.ruff]
+exclude = ["*migrations*"]
+
+[tool.ruff.lint]
+ignore = ["RUF012", "BLE001", "DTZ005", "PLW1508"]

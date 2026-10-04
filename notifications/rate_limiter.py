@@ -1,13 +1,12 @@
 import logging
 import time
-from typing import Optional
 
 import redis
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Optional[redis.Redis] = None
+_redis_client: redis.Redis | None = None
 
 
 def get_redis_client() -> redis.Redis:
@@ -43,7 +42,7 @@ class RateLimiter:
         self,
         max_requests: int = 10,
         window: int = 60,
-        client: Optional[redis.Redis] = None,
+        client: redis.Redis | None = None,
     ) -> None:
         self.max_requests = max_requests
         self.window = window
