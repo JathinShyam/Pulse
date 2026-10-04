@@ -542,9 +542,7 @@ def main():
                 for rate in fail_df["fail_rate"].fillna(0)
             ]
 
-            ax.bar(
-                fail_df["channel"], fail_df["fail_rate"].fillna(0), color=colors
-            )
+            ax.bar(fail_df["channel"], fail_df["fail_rate"].fillna(0), color=colors)
             ax.set_xlabel("Channel", color="#888888")
             ax.set_ylabel("Failure Rate (%)", color="#888888")
             ax.tick_params(colors="#888888")
