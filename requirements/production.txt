@@ -1,5 +1,10 @@
+-r base.txt
+
+# Production serving
+gunicorn~=26.2
+whitenoise~=6.12
+
 # Observability dashboard (Streamlit) + Prometheus exporter.
-# Not needed by the API or workers; installed only in images that run them.
 streamlit~=1.50
 prometheus-client~=0.26
 sqlalchemy~=2.0

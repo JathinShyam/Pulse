@@ -1,9 +1,6 @@
-# Runtime dependencies (API + Celery workers).
-# Compatible-release pins (~=) pick up patch/security releases automatically.
-# For fully reproducible builds, generate a lock file (e.g. `pip-compile`).
+# Core Runtime dependencies (API + Celery workers).
 
 # Django 5.2 is the current LTS (security support until April 2028).
-# Django 5.1 (previously pinned) reached end-of-life in December 2025.
 django~=5.2.17
 djangorestframework~=3.16
 drf-spectacular~=0.30.0
@@ -17,7 +14,3 @@ flower~=2.2
 # Delivery providers
 twilio~=9.11
 firebase-admin~=7.7
-
-# Production serving
-gunicorn~=26.2
-whitenoise~=6.12
