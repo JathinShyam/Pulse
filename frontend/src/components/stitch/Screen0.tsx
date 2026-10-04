@@ -1,10 +1,18 @@
+"use client";
 import React from "react";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export default function Screen0() {
+  const router = useRouter();
   return (
     <>
       <div>
-        <header className="fixed top-0 w-full z-50 bg-surface-pitch/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+        <motion.header
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          className="fixed top-0 w-full z-50 bg-surface-pitch/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+        >
           <div className="h-20 max-w-[1440px] mx-auto px-margin-desktop flex items-center justify-between">
             <div className="flex items-center gap-space-md">
               <div className="w-10 h-10 rounded-DEFAULT bg-primary-container flex items-center justify-center shadow-[0_0_24px_rgba(254,88,36,0.35)]">
@@ -27,22 +35,20 @@ export default function Screen0() {
             >
               <a
                 className="text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-space-xs transition-colors"
-                data-path="features"
-                href="#"
+                onClick={() => router.push("/composer")}
+                style={{ cursor: "pointer" }}
               >
                 Features
               </a>
               <a
                 className="text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-space-xs transition-colors"
                 data-path="gateways-carrier-routing-architecture"
-                href="#"
               >
                 Architecture
               </a>
               <a
                 className="text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-space-xs transition-colors"
                 data-path="gateways"
-                href="#"
               >
                 Gateways
               </a>
@@ -50,14 +56,12 @@ export default function Screen0() {
                 aria-current="page"
                 className="px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary-container font-bold rounded-full"
                 data-path="pricing-sla-tier-plans"
-                href="#"
               >
                 Pricing
               </a>
               <a
                 className="text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-space-xs transition-colors"
                 data-path="docs"
-                href="#"
               >
                 Documentation
               </a>
@@ -65,8 +69,8 @@ export default function Screen0() {
             <div className="flex items-center gap-space-md">
               <a
                 className="text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors"
-                data-path="signin"
-                href="#"
+                onClick={() => router.push("/login")}
+                style={{ cursor: "pointer" }}
               >
                 Sign In
               </a>
@@ -83,8 +87,13 @@ export default function Screen0() {
               </div>
             </div>
           </div>
-        </header>
-        <main className="w-full pt-20 bg-surface-pitch min-h-screen">
+        </motion.header>
+        <motion.main
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
+          className="w-full pt-20 bg-surface-pitch min-h-screen"
+        >
           <div className="flex flex-col w-full">
             {/* Top Ambient Glow Field */}
             <div className="relative w-full overflow-hidden">
@@ -199,10 +208,7 @@ export default function Screen0() {
                         </li>
                       </ul>
                     </div>
-                    <a
-                      className="w-full py-space-md rounded-full bg-surface-container-high hover:bg-surface-bright text-surface-light font-label-md text-label-md text-center transition-all flex items-center justify-center gap-2"
-                      href="#"
-                    >
+                    <a className="w-full py-space-md rounded-full bg-surface-container-high hover:bg-surface-bright text-surface-light font-label-md text-label-md text-center transition-all flex items-center justify-center gap-2">
                       <span>Start Building Free</span>
                       <span className="material-symbols-outlined text-[16px]">
                         arrow_forward
@@ -306,10 +312,7 @@ export default function Screen0() {
                         </li>
                       </ul>
                     </div>
-                    <a
-                      className="w-full py-space-md rounded-full bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-bold text-center shadow-[0_8px_32px_rgba(254,88,36,0.35)] transition-all flex items-center justify-center gap-2"
-                      href="#"
-                    >
+                    <a className="w-full py-space-md rounded-full bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-bold text-center shadow-[0_8px_32px_rgba(254,88,36,0.35)] transition-all flex items-center justify-center gap-2">
                       <span>Deploy Production Tier</span>
                       <span className="material-symbols-outlined text-[18px]">
                         bolt
@@ -396,10 +399,7 @@ export default function Screen0() {
                         </li>
                       </ul>
                     </div>
-                    <a
-                      className="w-full py-space-md rounded-full bg-surface-container-high hover:bg-surface-bright text-surface-light font-label-md text-label-md text-center transition-all flex items-center justify-center gap-2"
-                      href="#"
-                    >
+                    <a className="w-full py-space-md rounded-full bg-surface-container-high hover:bg-surface-bright text-surface-light font-label-md text-label-md text-center transition-all flex items-center justify-center gap-2">
                       <span>Schedule Architecture Review</span>
                       <span className="material-symbols-outlined text-[16px]">
                         arrow_forward
@@ -725,19 +725,13 @@ export default function Screen0() {
                       </p>
                     </div>
                     <div className="flex items-center gap-space-md">
-                      <a
-                        className="px-space-xl py-space-md rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-bold shadow-[0_8px_32px_rgba(254,88,36,0.4)] hover:bg-tertiary-container transition-all flex items-center gap-space-sm whitespace-nowrap"
-                        href="#"
-                      >
+                      <a className="px-space-xl py-space-md rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-bold shadow-[0_8px_32px_rgba(254,88,36,0.4)] hover:bg-tertiary-container transition-all flex items-center gap-space-sm whitespace-nowrap">
                         <span>Request Stress Test Run</span>
                         <span className="material-symbols-outlined text-[18px]">
                           play_arrow
                         </span>
                       </a>
-                      <a
-                        className="w-14 h-14 rounded-full bg-surface-container-lowest hover:bg-surface-bright text-surface-light flex items-center justify-center transition-all group-hover:rotate-45 transform"
-                        href="#"
-                      >
+                      <a className="w-14 h-14 rounded-full bg-surface-container-lowest hover:bg-surface-bright text-surface-light flex items-center justify-center transition-all group-hover:rotate-45 transform">
                         <span className="material-symbols-outlined text-[24px]">
                           arrow_outward
                         </span>
@@ -748,7 +742,7 @@ export default function Screen0() {
               </section>
             </div>
           </div>
-        </main>
+        </motion.main>
         <footer className="w-full bg-surface-container-lowest pt-space-3xl pb-space-2xl">
           <div className="max-w-[1440px] mx-auto px-margin-desktop flex flex-col gap-space-2xl">
             <div className="flex items-center justify-between p-space-md rounded-DEFAULT bg-surface-container-low">
@@ -794,28 +788,16 @@ export default function Screen0() {
                 <span className="font-label-caps text-label-caps text-surface-light">
                   ROUTING FABRIC
                 </span>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Multi-carrier Failover
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Smart SMS Shortcodes
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   WhatsApp Enterprise
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   APNs / FCM Queues
                 </a>
               </div>
@@ -823,28 +805,16 @@ export default function Screen0() {
                 <span className="font-label-caps text-label-caps text-surface-light">
                   DEVELOPERS
                 </span>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   REST &amp; gRPC SDKs
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   CLI Signal Tools
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Telemetry Stream Webhooks
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Security &amp; SOC2 Type II
                 </a>
               </div>
@@ -852,28 +822,16 @@ export default function Screen0() {
                 <span className="font-label-caps text-label-caps text-surface-light">
                   COMMAND
                 </span>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Carrier Latency Index
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Cluster Status Hub
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Enterprise SLA Guarantee
                 </a>
-                <a
-                  className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-body-md text-body-md text-text-muted-dark hover:text-on-surface transition-colors">
                   Incident Archives
                 </a>
               </div>
@@ -883,22 +841,13 @@ export default function Screen0() {
                 © 2025 PULSE TELEMETRY ENGINE INC. ARCHITECTED FOR RESILIENCE.
               </span>
               <div className="flex items-center gap-space-lg">
-                <a
-                  className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors">
                   PRIVACY PROTOCOL
                 </a>
-                <a
-                  className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors">
                   TERMS OF SERVICE
                 </a>
-                <a
-                  className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors"
-                  href="#"
-                >
+                <a className="font-label-caps text-label-caps text-text-muted-dark hover:text-on-surface transition-colors">
                   TRUST CENTER
                 </a>
               </div>

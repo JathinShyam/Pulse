@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -33,7 +34,10 @@ export default function Screen3() {
   return (
     <>
       <div>
-        <aside
+        <motion.aside
+          initial={{ x: -300 }}
+          animate={{ x: 0 }}
+          transition={{ type: "spring", stiffness: 100 }}
           className="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest z-50 flex flex-col pt-space-lg pb-space-lg justify-between transition-all"
           id="app-sidebar"
         >
@@ -207,7 +211,7 @@ export default function Screen3() {
               </span>
             </div>
           </div>
-        </aside>
+        </motion.aside>
         <div className="pl-72 transition-all" id="main-layout-wrapper">
           <header
             className="fixed top-0 left-72 right-0 h-20 bg-surface-pitch/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-xl transition-all"

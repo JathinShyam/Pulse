@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import axios from "axios";
 
 export default function Screen1() {
@@ -226,7 +227,10 @@ export default function Screen1() {
                 </p>
               </div>
 
-              <form
+              <motion.form
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.4 }}
                 onSubmit={handleSend}
                 className="flex flex-col gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
               >
@@ -299,7 +303,7 @@ export default function Screen1() {
                   </span>
                   {loading ? "DISPATCHING..." : "DISPATCH SIGNAL"}
                 </button>
-              </form>
+              </motion.form>
             </div>
           </main>
         </div>
