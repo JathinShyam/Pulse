@@ -4,6 +4,10 @@ Pulse has two supported shapes: a local Docker Compose stack and Kubernetes
 manifests. Both run the Next.js frontend as the browser entry point; Django
 stays internal, and its data endpoints require an API key or JWT.
 
+![Pulse deployment topology](diagrams/deployment-topology.png)
+
+_Editable source: [deployment-topology.excalidraw](diagrams/deployment-topology.excalidraw)._
+
 ## Docker Compose
 
 The Compose stack includes PostgreSQL, Redis, Django/Gunicorn, a Celery worker,

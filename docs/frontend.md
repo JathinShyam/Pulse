@@ -28,6 +28,10 @@ The console entry screen uses the Next.js same-origin proxy. Login accepts an
 email address or username; JWTs are stored in httpOnly cookies and are never
 returned to browser JavaScript. There is no demo-token bypass.
 
+![Authentication and session flow](diagrams/auth-session-flow.png)
+
+_Editable source: [auth-session-flow.excalidraw](diagrams/auth-session-flow.excalidraw)._
+
 ![Pulse console sign-in](images/web-login.png)
 
 ## Delivery health

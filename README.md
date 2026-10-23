@@ -50,20 +50,9 @@ an SLA or human delivery receipts. See
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    B[Browser] -->|HTTPS| F[Next.js frontend + session proxy]
-    C[API client] -->|X-API-Key| A[Django API]
-    F -->|/api/*| A
-    A --> P[(PostgreSQL)]
-    A --> R[(Redis / Celery queues)]
-    R --> H[High-priority worker]
-    R --> L[Low-priority worker]
-    H --> M[SMTP / Twilio / FCM]
-    L --> M
-    H --> P
-    L --> P
-```
+![Pulse system architecture](docs/diagrams/system-architecture.png)
+
+_Editable source: [system-architecture.excalidraw](docs/diagrams/system-architecture.excalidraw)._
 
 The frontend is the browser entry point. Django is internal in Kubernetes and
 bound to loopback in Compose. Browser requests to `/api/*` are proxied with the
@@ -211,6 +200,10 @@ Authentication:
 
 `Bearer` is reserved for JWT. A Bearer API key is rejected.
 
+![Authentication and session flow](docs/diagrams/auth-session-flow.png)
+
+_Editable source: [auth-session-flow.excalidraw](docs/diagrams/auth-session-flow.excalidraw)._
+
 Key routes:
 
 ```http
@@ -231,6 +224,10 @@ registration to 5/hour; both are configurable. Full request/response details
 are in [`docs/api_documentation.md`](docs/api_documentation.md).
 
 ## Priority and Retries
+
+![Notification request and delivery flow](docs/diagrams/request-delivery-flow.png)
+
+_Editable source: [request-delivery-flow.excalidraw](docs/diagrams/request-delivery-flow.excalidraw)._
 
 | Condition                                                                                                | Queue           |
 | -------------------------------------------------------------------------------------------------------- | --------------- |
@@ -291,6 +288,10 @@ typecheck, lint, production dependency audit and a production build.
 
 ## Scaling and Operations
 
+![Pulse deployment topology](docs/diagrams/deployment-topology.png)
+
+_Editable source: [deployment-topology.excalidraw](docs/diagrams/deployment-topology.excalidraw)._
+
 ```bash
 # Compose: scale the worker and web services
 docker compose up -d --scale celery=4 --scale web=2
@@ -350,6 +351,7 @@ testing the limiter itself.
 | [Web console tour](docs/frontend.md)           | Screenshots, responsive layouts and data states       |
 | [Design system](DESIGN.md)                     | Colour, type, layout and data-honesty rules           |
 | [Architecture](docs/architecture.md)           | Trust boundaries, request path and delivery semantics |
+| [Diagrams](docs/diagrams/README.md)            | Editable Excalidraw architecture, flow and topology   |
 | [API reference](docs/api_documentation.md)     | Auth, payloads, metrics and error codes               |
 | [Deployment](docs/deployment.md)               | Compose, production checklist and Kubernetes          |
 | [Kubernetes guide](k8s/README.md)              | Manifests, frontend/backend ingress and operations    |

@@ -1,5 +1,12 @@
 # Architecture
 
+![Pulse system architecture](diagrams/system-architecture.png)
+
+_Editable source: [system-architecture.excalidraw](diagrams/system-architecture.excalidraw)._
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TD
     Browser[Browser] -->|HTTPS| Web[Next.js frontend + httpOnly session proxy]
@@ -31,6 +38,8 @@ flowchart TD
     Web -->|/api/metrics| API
 ```
 
+</details>
+
 ## Request path
 
 1. Browser requests go to Next.js. `/api/*` route handlers attach the access
@@ -50,6 +59,10 @@ flowchart TD
    Terminal states are never overwritten by a late task.
 6. `/api/metrics` aggregates the caller's retained rows for the selected window;
    the UI renders those values and uses labelled Sample data only on error.
+
+![Notification request and delivery flow](diagrams/request-delivery-flow.png)
+
+_Editable source: [request-delivery-flow.excalidraw](diagrams/request-delivery-flow.excalidraw)._
 
 ## Delivery semantics
 
