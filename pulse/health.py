@@ -7,7 +7,7 @@ Implemented as the first middleware so that they:
   * bypass SECURE_SSL_REDIRECT (probes speak plain HTTP inside the cluster),
   * never touch sessions, auth or the URL resolver.
 
-GET /healthz/  -> 200 if the process is up (no dependency checks).
+GET /health/   -> 200 if the process is up (no dependency checks).
 GET /readyz/   -> 200 if PostgreSQL and Redis are reachable, else 503.
 """
 

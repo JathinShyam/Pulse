@@ -1,9 +1,6 @@
-import logging
 from abc import ABC, abstractmethod
 
 from .tasks import send_email_task, send_push_task
-
-logger = logging.getLogger(__name__)
 
 
 class BaseChannelAdapter(ABC):

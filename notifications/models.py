@@ -95,12 +95,6 @@ class NotificationLog(models.Model):
             )
         return cls.objects.create(**kwargs), True
 
-    @classmethod
-    def create_if_not_exists(cls, **kwargs) -> "NotificationLog":
-        """Atomic create with idempotency check (returns only the log)."""
-        log, _created = cls.get_or_create_idempotent(**kwargs)
-        return log
-
     def atomic_update_status(
         self, status: str, *, count_attempt: bool = False, **extra
     ) -> bool:

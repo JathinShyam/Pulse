@@ -104,8 +104,7 @@ The asynchronous path is where the interesting failures live. A worker does not 
 
 ```python
 updated = (
-    NotificationLog.objects
-    .filter(id=self.id)
+    NotificationLog.objects.filter(id=self.id)
     .filter(claimable | abandoned)
     .filter(attempts__lt=F("max_retries"))
     .update(

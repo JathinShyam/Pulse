@@ -298,7 +298,11 @@ export default function DashboardPage() {
           <Metric
             label="P95 latency"
             value={p95 == null ? "—" : fmtMs(p95)}
-            detail="Request accepted to provider acknowledgement (includes queue time)"
+            detail={
+              usingDemo
+                ? "Sample value; request accepted to provider acknowledgement"
+                : "Request accepted to provider acknowledgement (includes queue time)"
+            }
             icon={ArrowRight}
           />
           <Metric

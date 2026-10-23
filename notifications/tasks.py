@@ -64,6 +64,24 @@ def deliver(task, log_id: str, channel: str, send) -> None:
         return
 
     if log.attempts >= log.max_retries:
+        # A duplicate execution must not fail a row that another worker is
+        # still sending on its final attempt. Only fail it once that claim is
+        # stale (or was never recorded).
+        in_flight = (
+            log.status == "sending"
+            and log.last_attempt_at is not None
+            and log.last_attempt_at
+            > timezone.now()
+            - timedelta(seconds=settings.NOTIFICATION_CLAIM_TIMEOUT_SECONDS)
+        )
+        if in_flight:
+            logger.info(
+                "Notification %s is on its final attempt in another worker; "
+                "skipping duplicate %s send",
+                log_id,
+                channel,
+            )
+            return
         log.atomic_update_status(
             "failed",
             error_message=log.error_message or "Retry budget exhausted",

@@ -22,6 +22,7 @@ from .serializers import (
     TemplateListResponseSerializer,
     TemplateSerializer,
 )
+from .tasks import mask_recipient
 
 # Conditional import for OpenAPI decorators
 if settings.ENABLE_DOCS:
@@ -252,7 +253,7 @@ class SendNotificationView(APIView):
             log.id,
             data["queue"],
             channel,
-            log.to,
+            mask_recipient(log.to),
         )
         response = Response(
             {"notification_id": str(log.id), "status": "queued"},

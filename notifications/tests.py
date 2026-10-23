@@ -469,6 +469,17 @@ class PulseAPITestCase(TestCase):
         self.assertEqual(log.status, "failed")
         self.assertEqual(log.error_message, "Delivery queue unavailable")
 
+    @patch("notifications.views.EmailAdapter.send", return_value=None)
+    def test_send_logs_mask_the_recipient(self, _send):
+        with self.assertLogs("notifications.views", level="INFO") as captured:
+            response = self.api_client().post(
+                "/api/notifications/send/", self.send_payload(), format="json"
+            )
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        output = "\n".join(captured.output)
+        self.assertNotIn("ada@example.com", output)
+        self.assertIn("a***@example.com", output)
+
     # ------------------------------------------------------------------
     # Delivery claiming / terminal state
     # ------------------------------------------------------------------
@@ -570,6 +581,32 @@ class PulseAPITestCase(TestCase):
         log.refresh_from_db()
         self.assertEqual(log.status, "failed")
         self.assertEqual(log.error_message, "Retry budget exhausted")
+        self.assertEqual(send.call_count, 0)
+
+    def test_duplicate_does_not_fail_an_active_final_attempt(self):
+        log = self.create_log(
+            status="sending",
+            attempts=5,
+            max_retries=5,
+            sent_at=None,
+            last_attempt_at=timezone.now(),
+        )
+        send = Mock()
+        deliver(Mock(), str(log.id), "email", send)
+        log.refresh_from_db()
+        self.assertEqual(log.status, "sending")
+        self.assertEqual(send.call_count, 0)
+
+        stale = self.create_log(
+            status="sending",
+            attempts=5,
+            max_retries=5,
+            sent_at=None,
+            last_attempt_at=timezone.now() - timedelta(hours=1),
+        )
+        deliver(Mock(), str(stale.id), "email", send)
+        stale.refresh_from_db()
+        self.assertEqual(stale.status, "failed")
         self.assertEqual(send.call_count, 0)
 
     # ------------------------------------------------------------------

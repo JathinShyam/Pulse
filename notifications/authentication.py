@@ -46,10 +46,6 @@ def fingerprint_key(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:12]
 
 
-def _fingerprint(key: str) -> str:
-    return fingerprint_key(key)
-
-
 def _extract_key(request) -> str | None:
     key = request.headers.get("X-API-Key")
     if key:
@@ -77,7 +73,7 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
                 matched = True
         if not matched:
             raise exceptions.AuthenticationFailed("Invalid API key.")
-        return APIClient(key_fingerprint=_fingerprint(provided)), provided
+        return APIClient(key_fingerprint=fingerprint_key(provided)), provided
 
     def authenticate_header(self, request):
         return self.keyword

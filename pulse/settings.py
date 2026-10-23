@@ -357,7 +357,16 @@ CELERY_TASK_SOFT_TIME_LIMIT = env_int("CELERY_TASK_SOFT_TIME_LIMIT", 60)
 CELERY_TASK_TIME_LIMIT = env_int("CELERY_TASK_TIME_LIMIT", 90)
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 # Must exceed the longest retry countdown, or ETA tasks get redelivered early.
-CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 3600}
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": max(
+        3600,
+        int(
+            NOTIFICATION_RETRY_BASE_DELAY
+            * 2 ** max(0, NOTIFICATION_MAX_RETRIES - 1)
+            * 1.1
+        ),
+    )
+}
 CELERY_WORKER_SEND_TASK_EVENTS = True  # Flower
 CELERY_TASK_SEND_SENT_EVENT = True
 
