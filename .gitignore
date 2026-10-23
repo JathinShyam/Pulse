@@ -11,14 +11,11 @@ venv/
 .DS_Store
 postgres_data/
 celerybeat-schedule
-logs/
+/logs/
 .history/
 .pytest_cache/
 .ruff_cache/
-.venv/
 
 # Docker
 *.pid
 *.log
-
-.stitch/
