@@ -29,7 +29,8 @@ class RateLimiter:
     """
     Fixed-window rate limiter backed by Redis.
 
-    The key should identify the caller and channel, e.g. "user_123:email".
+    The key identifies the caller, target user and channel, e.g.
+    "user:7:user_123:email".
     Each window gets its own Redis key (``rate_limit:<key>:<window#>``) which
     is incremented atomically with INCR, so concurrent requests can never
     reset each other's counters.

@@ -20,7 +20,6 @@ export function useMetrics(window: MetricsWindow = "24h") {
     queryFn: async () =>
       (await api.get<Metrics>("/metrics", { params: { window } })).data,
     refetchInterval: 10_000,
-    placeholderData: (prev) => prev,
   });
 }
 
@@ -48,7 +47,6 @@ export function useNotifications(
         )
       ).data,
     refetchInterval: opts.live === false ? false : 5_000,
-    placeholderData: (prev) => prev,
   });
 }
 
@@ -60,7 +58,9 @@ export function useNotification(id: string | null) {
     enabled: !!id,
     refetchInterval: (q) => {
       const s = q.state.data?.status;
-      return s === "pending" || s === "retrying" ? 2_000 : false;
+      return s === "pending" || s === "sending" || s === "retrying"
+        ? 2_000
+        : false;
     },
   });
 }

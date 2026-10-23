@@ -10,32 +10,32 @@ import { Providers } from "@/components/providers";
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
 });
 
 const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const jetbrains = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "Pulse — Mission-Critical Notification Engine",
+    default: "Pulse — Delivery infrastructure for notifications",
     template: "%s · Pulse",
   },
   description:
-    "Multi-channel notification orchestration with retries, idempotency, priority queues and real-time telemetry.",
+    "One API for email, SMS and push. Priority queues, bounded retries and a trace for every send.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070809",
+  themeColor: "#f6f7f4",
 };
 
 export default function RootLayout({

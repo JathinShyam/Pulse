@@ -24,7 +24,7 @@ spec:
         # Run migrations before starting the web server
         - name: migrate
           image: pulse:latest # Replace with your registry image
-          command: ["python", "manage.py", "migrate", "--noinput"]
+          command: ["python", "manage.py", "migrate_locked"]
           envFrom:
             - configMapRef:
                 name: pulse-config
@@ -44,6 +44,7 @@ spec:
               "0.0.0.0:8000",
               "--workers",
               "4",
+              "--no-control-socket",
             ]
           ports:
             - containerPort: 8000
@@ -64,16 +65,21 @@ spec:
               memory: "1Gi"
           readinessProbe:
             httpGet:
-              path: /api/notifications/templates/
+              path: /readyz/
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet:
-              path: /api/notifications/templates/
+              path: /health/
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service

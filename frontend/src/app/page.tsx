@@ -1,1090 +1,753 @@
-"use client";
-
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Activity,
   ArrowRight,
+  ArrowUpRight,
   Bell,
   Check,
   CheckCircle2,
   ChevronRight,
-  Code2,
-  Copy,
-  ExternalLink,
-  Flame,
-  Globe,
-  Layers,
-  Lock,
+  Clock,
   Mail,
-  MessageSquare,
-  Radio,
-  Rocket,
-  Shield,
+  MessageSquareText,
   ShieldCheck,
-  Smartphone,
-  Sparkles,
   Terminal,
+  Webhook,
   Zap,
 } from "lucide-react";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { CopyButton } from "@/components/copy-button";
+import { PulseMark } from "@/components/logo";
+import { DEMO_NOTIFICATIONS, DEMO_SERIES } from "@/lib/demo";
+import { channelMeta } from "@/lib/channels";
+import { fmtClock } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-export default function LandingPage() {
-  const [copied, setCopied] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<
-    "curl" | "python" | "typescript" | "go"
-  >("typescript");
-  const [activeChannelSim, setActiveChannelSim] = useState<
-    "push" | "email" | "sms"
-  >("push");
-  const [tickerLatency, setTickerLatency] = useState(41.8);
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.1.0";
 
-  // Subtle real-time fluctuation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTickerLatency(
-        (prev) => +(prev + (Math.random() * 0.8 - 0.4)).toFixed(1),
-      );
-    }, 2800);
-    return () => clearInterval(interval);
-  }, []);
-
-  const codeSnippets = {
-    typescript: `import { PulseClient } from "@pulse/telemetry";
-
-const pulse = new PulseClient({
-  apiKey: process.env.PULSE_API_KEY,
-  cluster: "us-east-1",
-});
-
-// Deterministic multi-channel cascading dispatch
-const dispatch = await pulse.notifications.send({
-  template_name: "security_alert",
-  user_id: "usr_9918xfa",
-  to: "+14155550123",
-  channel: "sms",
-  priority: "high",
-  context: {
-    incident_id: "INC-8891",
-    severity: "CRITICAL_P0",
-    cluster: "edge-us-east",
+const requestCode = `// Server-side example. Browser sessions use the same-origin /api proxy.
+await fetch("https://pulse.example.com/api/notifications/send/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": process.env.PULSE_API_KEY,
   },
-  idempotency_key: "idem_8820f18aa0",
-});
+  body: JSON.stringify({
+    template_name: "security_alert",
+    user_id: "user_9918",
+    channel: "push",
+    to: "demo-device-token",
+    priority: "high",
+    subject: "Security alert",
+    body: "A new sign-in was detected for {name}.",
+    context: { name: "Alex" },
+    idempotency_key: "idem_8f2a",
+  }),
+});`;
 
-console.log("Packet dispatched:", dispatch.notification_id);`,
+const tracePayload = `{
+  "template_name": "security_alert",
+  "user_id": "user_9918",
+  "channel": "push",
+  "to": "demo-device-token",
+  "priority": "high",
+  "subject": "Security alert",
+  "body": "A new sign-in was detected for {name}.",
+  "context": { "name": "Alex" },
+  "idempotency_key": "idem_8f2a"
+}`;
 
-    curl: `curl -X POST https://api.pulse.dev/v1/notifications/send/ \\
-  -H "X-API-Key: $PULSE_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "template_name": "security_alert",
-    "user_id": "usr_9918xfa",
-    "to": "+14155550123",
-    "channel": "sms",
-    "priority": "high",
-    "context": {
-      "incident_id": "INC-8891",
-      "severity": "CRITICAL_P0"
-    },
-    "idempotency_key": "idem_8820f18aa0"
-  }'`,
+const traceSteps = [
+  {
+    title: "Request accepted",
+    detail: "Schema valid · idempotency key stored",
+    time: "0ms",
+  },
+  {
+    title: "Queued for push",
+    detail: "Priority queue · high_priority",
+    time: "3ms",
+  },
+  {
+    title: "Provider accepted",
+    detail: "FCM response attached to the trace",
+    time: "21ms",
+  },
+  {
+    title: "Acknowledged",
+    detail: "Provider response stored · trace closed",
+    time: "37ms",
+  },
+];
 
-    python: `from pulse import PulseClient
+const channels = [
+  {
+    icon: Mail,
+    name: "Email",
+    provider: "SMTP",
+    copy: "Transactional email through your configured SMTP server. Provider errors stay on the trace.",
+  },
+  {
+    icon: MessageSquareText,
+    name: "SMS",
+    provider: "Twilio",
+    copy: "One-way transactional SMS through Twilio. Provider responses are recorded on the trace.",
+  },
+  {
+    icon: Bell,
+    name: "Push",
+    provider: "FCM",
+    copy: "Push through Firebase Cloud Messaging. A console provider is available for local development.",
+  },
+];
 
-client = PulseClient(api_key="your-api-key")
+const routingRules = [
+  {
+    name: "OTP / verification",
+    detail: "Template keyword → high_priority",
+    path: ["sms"],
+  },
+  {
+    name: "Explicit priority",
+    detail: "priority: high → high_priority",
+    path: ["push"],
+  },
+  {
+    name: "Everything else",
+    detail: "Default → low_priority",
+    path: ["email"],
+  },
+];
 
-response = client.notifications.send(
-    template_name="security_alert",
-    user_id="usr_9918xfa",
-    to="ops@company.internal",
-    channel="email",
-    priority="high",
-    context={
-        "incident_id": "INC-8891",
-        "severity": "CRITICAL_P0",
-    },
-    idempotency_key="idem_8820f18aa0",
-)
-print("Queued:", response.notification_id)`,
+const principles = [
+  {
+    title: "Persist first.",
+    copy: "A request is persisted before it is queued. Provider errors and the attempt count stay on the record.",
+  },
+  {
+    title: "One accept per key.",
+    copy: "Idempotency keys are enforced by a unique database constraint, so a retried request with the same key cannot become a second queue item.",
+  },
+  {
+    title: "No mystery failures.",
+    copy: "Provider metadata, the latest error and the attempt count remain attached to the message. You can see where sending stopped — and why.",
+  },
+];
 
-    go: `package main
+function sparkline(values: number[], width = 560, height = 120) {
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = Math.max(max - min, 1);
+  const points = values.map((value, index) => {
+    const x = (index / (values.length - 1)) * width;
+    const y = height - ((value - min) / span) * (height - 10) - 5;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return points.join(" ");
+}
 
-import (
-  "context"
-  "fmt"
-  "github.com/pulse-telemetry/pulse-go"
-)
+function HeroTrace() {
+  return (
+    <div className="relative">
+      <div className="absolute -inset-3 rounded-[1.6rem] border border-line/70" />
+      <div className="ink-panel relative overflow-hidden border border-ink/10 shadow-[0_30px_80px_-40px_rgba(23,24,22,0.55)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <PulseMark className="size-4 text-accent" />
+            <span className="font-mono text-[10px] tracking-[0.12em] text-white/50 uppercase">
+              Delivery trace
+            </span>
+          </div>
+          <span className="rounded-full border border-white/10 px-2.5 py-1 font-mono text-[10px] tracking-[0.08em] text-white/60 uppercase">
+            Example
+          </span>
+        </div>
 
-func main() {
-  client := pulse.NewClient("pulse_key_sec99")
-  res, err := client.Send(context.Background(), &pulse.SendRequest{
-    TemplateName:   "security_alert",
-    UserID:         "usr_9918xfa",
-    To:             "+14155550123",
-    Channel:        pulse.ChannelSMS,
-    Priority:       pulse.PriorityHigh,
-    IdempotencyKey: "idem_8820f18aa0",
-  })
-  if err != nil {
-    panic(err)
-  }
-  fmt.Printf("Signal Queued: %s\\n", res.NotificationID)
-}`,
-  };
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-mono text-[11px] text-white/65">
+              <span className="text-white/90">POST</span>{" "}
+              /api/notifications/send/
+            </p>
+            <CopyButton
+              value={tracePayload}
+              className="text-white/60 hover:bg-white/10 hover:text-white"
+            />
+          </div>
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(codeSnippets[selectedLanguage]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+          <pre className="mt-3 overflow-x-auto rounded-lg border border-white/10 bg-white/[0.035] p-3.5 font-mono text-[11px] leading-relaxed text-white/65">
+            {tracePayload}
+          </pre>
+
+          <div className="mt-6">
+            {traceSteps.map((step, index) => (
+              <div
+                key={step.title}
+                className="relative flex gap-3.5 pb-5 last:pb-0"
+              >
+                {index < traceSteps.length - 1 && (
+                  <span className="absolute top-3.5 left-[4px] h-[calc(100%-2px)] w-px bg-white/10" />
+                )}
+                <span
+                  className={cn(
+                    "relative mt-1.5 size-[9px] shrink-0 rounded-full border",
+                    index === traceSteps.length - 1
+                      ? "border-accent bg-accent"
+                      : "border-white/25 bg-ink",
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <p className="text-[13px] font-medium text-white/90">
+                      {step.title}
+                    </p>
+                    <span className="shrink-0 font-mono text-[10px] text-white/55">
+                      {step.time}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-white/60">
+                    {step.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-end justify-between gap-4 border-t border-white/10 pt-4">
+            <span className="font-mono text-[10px] text-white/55">
+              tr_8f2a…c91
+            </span>
+            <span className="font-mono text-[10px] font-medium text-accent-bright">
+              Provider accepted in 37ms
+            </span>
+          </div>
+
+          <svg
+            viewBox="0 0 420 34"
+            className="mt-4 h-8 w-full text-accent/70"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 24h30l7-15 9 27 8-21 6 9h34l7-12 8 20 7-9h26l9-17 10 29 9-23 7 11h31l8-13 8 21 7-9h29l9-16 10 27 8-19 7 9h26l8-11 8 18 7-7h40"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodePanel() {
+  return (
+    <div className="ink-panel min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.08em] text-white/65 uppercase">
+          <Terminal className="size-3.5" />
+          server.ts
+        </div>
+        <CopyButton
+          value={requestCode}
+          className="text-white/60 hover:bg-white/10 hover:text-white"
+        />
+      </div>
+      <pre className="overflow-x-auto p-5 font-mono text-[11.5px] leading-[1.8] text-white/75">
+        {requestCode}
+      </pre>
+      <div className="flex items-center justify-between border-t border-white/10 px-5 py-3 font-mono text-[10px]">
+        <span className="text-accent-bright">202 Accepted</span>
+        <span className="text-white/55">tr_8f2a…c91</span>
+      </div>
+    </div>
+  );
+}
+
+function RoutingPanel() {
+  return (
+    <div className="panel overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
+          <Zap className="size-3.5" />
+          Routing rules
+        </div>
+        <span className="badge border-line bg-canvas px-2 py-0.5 text-[9px]">
+          Sample
+        </span>
+      </div>
+      <div>
+        {routingRules.map((rule) => (
+          <div
+            key={rule.name}
+            className="border-b border-line px-4 py-3.5 last:border-b-0"
+          >
+            <p className="text-[13px] font-medium">{rule.name}</p>
+            <p className="mt-0.5 text-[11px] text-faint">{rule.detail}</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {rule.path.map((channel, index) => {
+                const meta = channelMeta(channel);
+                return (
+                  <span key={channel} className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2 py-1 font-mono text-[9px] tracking-[0.04em] text-muted uppercase">
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ background: meta.color }}
+                      />
+                      {meta.label}
+                    </span>
+                    {index < rule.path.length - 1 && (
+                      <ChevronRight className="size-3 text-faint" />
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-line px-4 py-3 text-[11px] leading-relaxed text-faint">
+        Priority is chosen from the request or template keyword. There is no
+        automatic channel fallback.
+      </div>
+    </div>
+  );
+}
+
+function ConsolePreview() {
+  const values = DEMO_SERIES.map((point) => point.total);
+  const rows = DEMO_NOTIFICATIONS.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-pitch text-fg font-sans selection:bg-brand selection:text-white overflow-x-hidden">
-      {/* Ambient Radial Lights */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-brand/[0.08] blur-[180px] pointer-events-none -z-10 rounded-full" />
-      <div className="fixed top-1/3 -right-40 w-[600px] h-[600px] bg-cyan-500/[0.03] blur-[200px] pointer-events-none -z-10 rounded-full" />
-      <div className="fixed bottom-0 -left-40 w-[600px] h-[600px] bg-brand/[0.04] blur-[180px] pointer-events-none -z-10 rounded-full" />
-
-      {/* 1. Announcement Top Bar */}
-      <div className="w-full border-b border-line/60 bg-surface/80 backdrop-blur text-[11px] font-mono py-2 px-4 sm:px-8 flex items-center justify-between text-muted">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/15 text-brand font-semibold text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" />
-            v2.4 TELEMETRY CORE
-          </span>
-          <span className="hidden md:inline text-subtle">|</span>
-          <span className="hidden md:inline text-fg/80">
-            Dispatched 14.8M notifications across 194 countries past 24h
-          </span>
+    <div className="panel overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <div className="flex items-center gap-2 text-[13px] font-medium">
+          <span className="dot bg-ok" />
+          Deliveries
         </div>
-        <div className="flex items-center gap-6">
-          <span className="flex items-center gap-1.5 text-fg/90">
-            <span className="w-2 h-2 rounded-full bg-ok" />
-            GLOBAL CLUSTER ACTIVE ({tickerLatency}ms)
-          </span>
-          <Link
-            href="/dashboard"
-            className="hidden sm:inline-flex items-center gap-1 text-brand hover:text-brand-bright transition-colors font-medium underline decoration-brand/40 underline-offset-4"
-          >
-            Console Live →
-          </Link>
-        </div>
+        <span className="badge border-line bg-canvas px-2 py-0.5 text-[9px]">
+          Sample
+        </span>
       </div>
 
-      {/* 2. Phenomenon Studio Navigation Header */}
-      <header className="sticky top-0 z-50 w-full bg-pitch/85 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-card to-card-hover border border-white/10 flex items-center justify-center text-brand group-hover:scale-105 group-hover:border-brand/50 transition-all shadow-[0_0_20px_rgba(254,88,36,0.25)]">
-              <Radio className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-display font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-                PULSE
-                <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-              </span>
-              <span className="font-mono text-[9px] tracking-widest text-subtle uppercase -mt-0.5">
-                Telemetry Engine
-              </span>
-            </div>
-          </Link>
-
-          {/* Navigation Pill */}
-          <nav className="hidden md:flex items-center gap-1 bg-card/90 border border-white/10 px-4 py-1.5 rounded-full shadow-inner text-xs font-medium">
-            <a
-              href="#features"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#architecture"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Architecture
-            </a>
-            <Link
-              href="/gateways"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Gateways
-            </Link>
-            <Link
-              href="/pricing"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/logs"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Telemetry Stream
-            </Link>
-          </nav>
-
-          {/* Right Action Buttons */}
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex items-center gap-1 px-4 py-2 rounded-full border border-line text-xs font-medium text-muted hover:text-white hover:border-white/20 transition-all"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/dashboard"
-              className="btn-glow inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider transition-all"
-            >
-              <span>Launch Console</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+      <div className="grid grid-cols-3 divide-x divide-line border-b border-line">
+        {[
+          ["Sent", "2,038"],
+          ["Success rate", "99.4%"],
+          ["P95 latency", "61ms"],
+        ].map(([label, value]) => (
+          <div key={label} className="px-4 py-3.5">
+            <p className="font-mono text-[9px] tracking-[0.08em] text-faint uppercase">
+              {label}
+            </p>
+            <p className="mt-1 font-display text-xl font-semibold tracking-[-0.03em] tabular-nums">
+              {value}
+            </p>
           </div>
-        </div>
-      </header>
-
-      {/* 3. Hero Section */}
-      <section className="relative pt-20 pb-28 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
-        {/* Rapid Dispatch Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-card border border-white/10 shadow-[0_0_20px_rgba(254,88,36,0.15)] mb-8"
-        >
-          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-          <span className="label-caps text-brand">
-            RAPID DISPATCH ORCHESTRATION
-          </span>
-          <span className="text-subtle">|</span>
-          <span className="font-mono text-xs text-muted">
-            ZERO DROP PACKET GUARANTEE
-          </span>
-        </motion.div>
-
-        {/* Main Title */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="font-display font-extrabold text-4xl sm:text-6xl lg:text-7xl tracking-tight max-w-5xl leading-[1.08] text-white"
-        >
-          The Notification Engine for{" "}
-          <span className="text-brand drop-shadow-[0_0_35px_rgba(254,88,36,0.6)]">
-            Mission-Critical
-          </span>{" "}
-          Telemetry.
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="mt-6 text-base sm:text-xl text-muted max-w-3xl font-normal leading-relaxed"
-        >
-          Engineered for mission-critical reliability, high-throughput SMS, and
-          responsive multi-region push notifications with sub-20ms latency,
-          zero-loss delivery, and automated cryptographic traces.
-        </motion.p>
-
-        {/* Hero CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="mt-10 flex flex-wrap items-center justify-center gap-4"
-        >
-          <Link
-            href="/composer"
-            className="btn-glow px-8 py-4 rounded-full bg-brand hover:bg-brand-bright text-pitch font-bold text-sm uppercase tracking-wider flex items-center gap-2.5 transition-all shadow-[0_0_30px_rgba(254,88,36,0.45)]"
-          >
-            <Rocket className="w-4 h-4 fill-pitch" />
-            <span>Deploy Signal Free</span>
-          </Link>
-          <Link
-            href="/dashboard"
-            className="px-7 py-4 rounded-full bg-card hover:bg-card-hover border border-line text-fg text-sm font-semibold flex items-center gap-2 transition-all hover:border-white/20"
-          >
-            <Activity className="w-4 h-4 text-brand" />
-            <span>Live Analytics</span>
-          </Link>
-        </motion.div>
-
-        {/* 4 Hero Counters (Stitch KPI Block) */}
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-16 w-full grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-2xl bg-card/60 border border-white/5 backdrop-blur-xl"
-        >
-          <div className="p-4 flex flex-col items-center text-center">
-            <span className="font-display font-extrabold text-3xl sm:text-4xl text-white">
-              &lt;4.8<span className="text-brand text-2xl">ms</span>
-            </span>
-            <span className="label-caps text-subtle mt-1.5">
-              P99 DISPATCH LATENCY
-            </span>
-            <span className="font-mono text-[11px] text-ok mt-0.5">
-              EDGE-ROUTED 0-RTT
-            </span>
-          </div>
-          <div className="p-4 flex flex-col items-center text-center border-l border-white/5">
-            <span className="font-display font-extrabold text-3xl sm:text-4xl text-white">
-              99.992<span className="text-brand text-2xl">%</span>
-            </span>
-            <span className="label-caps text-subtle mt-1.5">
-              GLOBAL DELIVERABILITY
-            </span>
-            <span className="font-mono text-[11px] text-ok mt-0.5">
-              SLA VERIFIED
-            </span>
-          </div>
-          <div className="p-4 flex flex-col items-center text-center border-t sm:border-t-0 sm:border-l border-white/5">
-            <span className="font-display font-extrabold text-3xl sm:text-4xl text-white">
-              2.4M<span className="text-brand text-2xl">+</span>
-            </span>
-            <span className="label-caps text-subtle mt-1.5">PEAK CAPACITY</span>
-            <span className="font-mono text-[11px] text-brand mt-0.5">
-              MSGS / SECOND
-            </span>
-          </div>
-          <div className="p-4 flex flex-col items-center text-center border-t sm:border-t-0 border-l border-white/5">
-            <span className="font-display font-extrabold text-3xl sm:text-4xl text-white">
-              194<span className="text-brand text-2xl"> countries</span>
-            </span>
-            <span className="label-caps text-subtle mt-1.5">
-              CARRIER REDUNDANCY
-            </span>
-            <span className="font-mono text-[11px] text-ok mt-0.5">
-              DIRECT SMPP + APNS
-            </span>
-          </div>
-        </motion.div>
-
-        {/* 4. Interactive Live Architecture / Protocol Simulator */}
-        <motion.div
-          id="architecture"
-          initial={{ opacity: 0, scale: 0.98 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="mt-16 w-full ph-card p-6 sm:p-8 rounded-3xl overflow-hidden shadow-2xl text-left"
-        >
-          {/* Top Window Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-line">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-err/80" />
-                <span className="w-3 h-3 rounded-full bg-warn/80" />
-                <span className="w-3 h-3 rounded-full bg-ok/80" />
-              </div>
-              <span className="font-mono text-xs text-muted">
-                Universal Notification Dispatch Protocol (UNDP/v2.4)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="label-caps px-2.5 py-1 rounded bg-brand/10 border border-brand/30 text-brand">
-                ACTIVE TRACE MESH
-              </span>
-              <span className="label-caps px-2.5 py-1 rounded bg-ok/10 border border-ok/30 text-ok">
-                SOCKET CONNECTED
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Simulation Content */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left: Input Payload Box */}
-            <div className="lg:col-span-5 p-5 rounded-2xl bg-pitch/90 border border-line flex flex-col gap-4 font-mono text-xs">
-              <div className="flex items-center justify-between border-b border-line pb-2.5">
-                <span className="text-brand font-bold text-[11px]">
-                  DISPATCH INGRESS PAYLOAD
-                </span>
-                <span className="text-ok text-[11px]">VALIDATED</span>
-              </div>
-              <pre className="text-muted leading-relaxed overflow-x-auto">
-                {`{
-  "dispatch_id": "dsp_09a8x00f89e",
-  "urgency": "CRITICAL_P0",
-  "notification": {
-    "title": "System Surge Warning",
-    "body": "Ingress breach canary triggered",
-    "category": "INFRA_SECURITY"
-  },
-  "channel_matrix": {
-    "apple_apns": true,
-    "google_fcm": true,
-    "aws_ses": true,
-    "direct_sms": true
-  },
-  "idempotency_key": "pulse_trace_881a"
-}`}
-              </pre>
-              <div className="flex gap-2 pt-2 border-t border-line">
-                <button
-                  onClick={() => setActiveChannelSim("push")}
-                  className={`px-3 py-1 rounded text-[11px] font-mono transition-all ${
-                    activeChannelSim === "push"
-                      ? "bg-brand text-pitch font-bold"
-                      : "bg-card text-muted hover:text-white"
-                  }`}
-                >
-                  Simulate Push
-                </button>
-                <button
-                  onClick={() => setActiveChannelSim("email")}
-                  className={`px-3 py-1 rounded text-[11px] font-mono transition-all ${
-                    activeChannelSim === "email"
-                      ? "bg-cyan-400 text-pitch font-bold"
-                      : "bg-card text-muted hover:text-white"
-                  }`}
-                >
-                  Simulate Email
-                </button>
-                <button
-                  onClick={() => setActiveChannelSim("sms")}
-                  className={`px-3 py-1 rounded text-[11px] font-mono transition-all ${
-                    activeChannelSim === "sms"
-                      ? "bg-purple-400 text-pitch font-bold"
-                      : "bg-card text-muted hover:text-white"
-                  }`}
-                >
-                  Simulate SMS
-                </button>
-              </div>
-            </div>
-
-            {/* Center: Circuit Mesh Router */}
-            <div className="lg:col-span-2 flex flex-col items-center justify-center py-4">
-              <div className="relative w-20 h-20 rounded-2xl bg-card border border-brand/50 flex flex-col items-center justify-center text-center shadow-[0_0_30px_rgba(254,88,36,0.3)]">
-                <Radio className="w-8 h-8 text-brand animate-pulse" />
-                <span className="font-mono text-[9px] text-white font-bold mt-1">
-                  ROUTER
-                </span>
-              </div>
-              <span className="font-mono text-[10px] text-brand font-semibold mt-2">
-                0-RTT Egress
-              </span>
-            </div>
-
-            {/* Right: Egress Gateways Live List */}
-            <div className="lg:col-span-5 flex flex-col gap-3">
-              {/* APNs */}
-              <div
-                className={`p-4 rounded-xl border transition-all ${
-                  activeChannelSim === "push"
-                    ? "bg-brand/10 border-brand shadow-[0_0_20px_rgba(254,88,36,0.2)]"
-                    : "bg-card border-line"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Smartphone className="w-4 h-4 text-brand" />
-                    <span className="font-display font-bold text-sm text-white">
-                      Apple APNs (HTTP/2)
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-ok font-semibold">
-                    22ms • 99.99%
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  Multiplexed binary stream with silent wakeup hooks
-                </p>
-              </div>
-
-              {/* FCM */}
-              <div
-                className={`p-4 rounded-xl border transition-all ${
-                  activeChannelSim === "push"
-                    ? "bg-brand/10 border-brand shadow-[0_0_20px_rgba(254,88,36,0.2)]"
-                    : "bg-card border-line"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Bell className="w-4 h-4 text-brand" />
-                    <span className="font-display font-bold text-sm text-white">
-                      Google FCM (v1 API)
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-ok font-semibold">
-                    19ms • 99.98%
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  OAuth2 token pooled dispatch with instant delivery receipts
-                </p>
-              </div>
-
-              {/* SES */}
-              <div
-                className={`p-4 rounded-xl border transition-all ${
-                  activeChannelSim === "email"
-                    ? "bg-cyan-500/10 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-                    : "bg-card border-line"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Mail className="w-4 h-4 text-cyan-400" />
-                    <span className="font-display font-bold text-sm text-white">
-                      AWS SES (TLS Multi-IP)
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-cyan-400 font-semibold">
-                    41ms • 99.95%
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  Dedicated IP warmup rotation & automated bounce parsing
-                </p>
-              </div>
-
-              {/* SMS */}
-              <div
-                className={`p-4 rounded-xl border transition-all ${
-                  activeChannelSim === "sms"
-                    ? "bg-purple-500/10 border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
-                    : "bg-card border-line"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <MessageSquare className="w-4 h-4 text-purple-400" />
-                    <span className="font-display font-bold text-sm text-white">
-                      Carrier Direct SMPP
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-purple-400 font-semibold">
-                    68ms • 99.91%
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  Tier-1 telecommunication trunks with dynamic DLR webhook audit
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* 5. Protocol Marquee */}
-      <div className="w-full py-8 border-y border-line/60 bg-surface/40 overflow-hidden">
-        <div className="flex gap-12 items-center justify-around text-muted font-mono text-xs tracking-wider uppercase opacity-75">
-          <span className="flex items-center gap-2 text-white">
-            <Radio className="w-4 h-4 text-brand" /> APPLE APNS HTTP/2
-          </span>
-          <span className="flex items-center gap-2 text-white">
-            <Zap className="w-4 h-4 text-brand" /> GOOGLE FCM PROTOCOL
-          </span>
-          <span className="flex items-center gap-2 text-white">
-            <Mail className="w-4 h-4 text-cyan-400" /> AWS SES HIGH-THROUGHPUT
-          </span>
-          <span className="flex items-center gap-2 text-white">
-            <MessageSquare className="w-4 h-4 text-purple-400" /> CARRIER SMPP
-            DIRECT
-          </span>
-          <span className="flex items-center gap-2 text-white">
-            <ShieldCheck className="w-4 h-4 text-ok" /> QUIC 0-RTT SECURITY
-          </span>
-        </div>
+        ))}
       </div>
 
-      {/* 6. Multi-Channel Bento Grid Features */}
-      <section id="features" className="py-28 px-6 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="label-caps text-brand">MULTI-CHANNEL ENGINE</span>
-          <h2 className="font-display font-bold text-3xl sm:text-5xl text-white mt-3">
-            Engineered for Resilient Multi-Channel Delivery
-          </h2>
-          <p className="text-muted mt-4 text-base">
-            Failover automatically across protocols. If push is unacknowledged
-            within 800ms, Pulse cascades to SMS and high-priority email without
-            duplicating user payloads.
+      <div className="px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-muted">Volume · last 24h</p>
+          <p className="font-mono text-[9px] tracking-[0.06em] text-faint uppercase">
+            All channels
           </p>
         </div>
+        <svg
+          viewBox="0 0 560 120"
+          className="mt-2 h-24 w-full"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline
+            points={sparkline(values, 560, 110)}
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <polygon
+            points={`0,110 ${sparkline(values, 560, 110)} 560,110`}
+            fill="var(--color-accent)"
+            opacity="0.055"
+          />
+        </svg>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Email Card */}
-          <div className="ph-card ph-card-hover p-8 rounded-3xl flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-6">
-                <Mail className="w-6 h-6" />
-              </div>
-              <span className="label-caps text-cyan-400">
-                PROTOCOL: SMTP / SES
-              </span>
-              <h3 className="font-display font-bold text-2xl text-white mt-2">
-                Email Delivery Engine
-              </h3>
-              <p className="text-muted text-sm mt-3 leading-relaxed">
-                Clean IP pools with automatic reputation warmup, DKIM/SPF
-                auto-signing, and asynchronous bounce classification with
-                webhook event dispatch.
-              </p>
-              <ul className="mt-6 space-y-2.5 text-xs text-fg/90">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" /> Automated
-                  DKIM/DMARC validation
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" /> Granular recipient
-                  suppression lists
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" /> Sub-50ms TLS
-                  handshakes
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/composer"
-              className="mt-8 text-xs font-mono text-cyan-400 hover:text-white flex items-center gap-1.5 transition-colors"
+      <div className="mt-2 divide-y divide-line border-t border-line">
+        {rows.map((row) => {
+          const meta = channelMeta(row.channel);
+          const Icon = meta.icon;
+          return (
+            <div
+              key={row.notification_id}
+              className="flex items-center gap-3 px-4 py-3"
             >
-              Compose Test Email <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* SMS Card */}
-          <div className="ph-card ph-card-hover p-8 rounded-3xl flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-6">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <span className="label-caps text-purple-400">
-                PROTOCOL: TIER-1 SMPP
+              <span className="dot bg-ok" />
+              <Icon className="size-3.5 text-faint" />
+              <span className="w-14 font-mono text-[10px] tracking-[0.04em] text-muted uppercase">
+                {meta.label}
               </span>
-              <h3 className="font-display font-bold text-2xl text-white mt-2">
-                Global SMS Gateway
-              </h3>
-              <p className="text-muted text-sm mt-3 leading-relaxed">
-                Direct connections to tier-1 mobile aggregators worldwide.
-                Automatic carrier routing, OTP shortcode optimization, and
-                localized sender ID failover.
-              </p>
-              <ul className="mt-6 space-y-2.5 text-xs text-fg/90">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-purple-400" /> 194 countries
-                  with localized routing
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-purple-400" /> Two-way SMS
-                  inbound listener webhooks
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-purple-400" /> Real-time
-                  delivery receipts (DLR)
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/composer"
-              className="mt-8 text-xs font-mono text-purple-400 hover:text-white flex items-center gap-1.5 transition-colors"
-            >
-              Compose Test SMS <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* Push Card */}
-          <div className="ph-card ph-card-hover p-8 rounded-3xl flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand mb-6">
-                <Bell className="w-6 h-6" />
-              </div>
-              <span className="label-caps text-brand">
-                PROTOCOL: APNS & FCM V1
+              <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-faint">
+                #{row.notification_id.slice(0, 6)}…
+                {row.notification_id.slice(-4)}
               </span>
-              <h3 className="font-display font-bold text-2xl text-white mt-2">
-                Push Infrastructure
-              </h3>
-              <p className="text-muted text-sm mt-3 leading-relaxed">
-                Direct HTTP/2 binary pipes for iOS and Web push with device
-                token lifecycle rotation and silent data payload
-                synchronization.
-              </p>
-              <ul className="mt-6 space-y-2.5 text-xs text-fg/90">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-brand" /> HTTP/2 connection
-                  multiplexing
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-brand" /> Bad device token
-                  auto-pruning
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-brand" /> Zero-payload silent
-                  notifications
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/composer"
-              className="mt-8 text-xs font-mono text-brand hover:text-white flex items-center gap-1.5 transition-colors"
-            >
-              Compose Test Push <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Unified API & Code Showcase */}
-      <section className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="ph-card p-8 sm:p-12 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left text */}
-            <div className="lg:col-span-5">
-              <span className="label-caps text-brand">DEVELOPER API</span>
-              <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mt-3">
-                One Unified API. Deterministic Multi-Channel Cascading.
-              </h2>
-              <p className="text-muted text-sm mt-4 leading-relaxed">
-                Never write custom provider retry loops again. Send a single
-                JSON request and Pulse coordinates delivery, exponential backoff
-                retries, and fallback channels with full cryptographic
-                traceability.
-              </p>
-
-              <div className="mt-8 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-card border border-line flex items-center justify-center text-brand shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-bold text-sm">
-                      Universal SDK Bindings
-                    </h4>
-                    <p className="text-muted text-xs mt-0.5">
-                      First-class libraries for TypeScript, Python, Go, Rust,
-                      and standard cURL endpoints.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-card border border-line flex items-center justify-center text-brand shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-bold text-sm">
-                      Idempotency & Deduplication
-                    </h4>
-                    <p className="text-muted text-xs mt-0.5">
-                      Built-in Redis & PostgreSQL atomic idempotency keys
-                      eliminate duplicate notifications on client retries.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-card border border-line flex items-center justify-center text-brand shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-bold text-sm">
-                      Priority Routing Queues
-                    </h4>
-                    <p className="text-muted text-xs mt-0.5">
-                      Separate Celery priority queues guarantee transactional
-                      OTPs never queue behind marketing batches.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Code Block */}
-            <div className="lg:col-span-7 bg-pitch/90 rounded-2xl border border-line p-5 shadow-2xl">
-              {/* Language Switcher Tabs */}
-              <div className="flex items-center justify-between border-b border-line pb-4 mb-4">
-                <div className="flex items-center gap-1.5">
-                  {(["typescript", "python", "curl", "go"] as const).map(
-                    (lang) => (
-                      <button
-                        key={lang}
-                        onClick={() => setSelectedLanguage(lang)}
-                        className={`px-3 py-1 rounded-md text-xs font-mono transition-all ${
-                          selectedLanguage === lang
-                            ? "bg-brand text-pitch font-bold shadow-sm"
-                            : "text-muted hover:text-white"
-                        }`}
-                      >
-                        {lang === "typescript"
-                          ? "TypeScript"
-                          : lang === "curl"
-                            ? "cURL"
-                            : lang.toUpperCase()}
-                      </button>
-                    ),
-                  )}
-                </div>
-                <button
-                  onClick={copyCode}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-muted hover:text-white bg-card border border-line transition-colors"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-ok" />
-                      <span className="text-ok">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Code Viewer */}
-              <div className="font-mono text-xs text-fg/90 overflow-x-auto leading-relaxed">
-                <pre>{codeSnippets[selectedLanguage]}</pre>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 8. Predictable Latency & Benchmarks */}
-      <section className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="label-caps text-brand">BENCHMARK SLA</span>
-          <h2 className="font-display font-bold text-3xl sm:text-5xl text-white mt-3">
-            Engineered for Extreme Latency Predictability
-          </h2>
-          <p className="text-muted mt-3 text-sm">
-            Sub-50ms transit across global nodes with zero dropped frames.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-8 rounded-2xl bg-card border border-line flex flex-col justify-between">
-            <div>
-              <span className="label-caps text-subtle">P50 EDGE TRANSIT</span>
-              <div className="font-display font-extrabold text-4xl text-white mt-2">
-                21.0<span className="text-brand text-2xl">ms</span>
-              </div>
-              <p className="text-muted text-xs mt-3">
-                Direct edge TLS terminations routing payloads through high-speed
-                internal backbone relays.
-              </p>
-            </div>
-            <div className="mt-6 flex items-center justify-between font-mono text-[11px] pt-4 border-t border-line">
-              <span className="text-muted">Target: &lt;50ms</span>
-              <span className="text-ok font-semibold">OPTIMAL</span>
-            </div>
-          </div>
-
-          <div className="p-8 rounded-2xl bg-card border border-line flex flex-col justify-between">
-            <div>
-              <span className="label-caps text-subtle">ERROR & LOSS RATE</span>
-              <div className="font-display font-extrabold text-4xl text-white mt-2">
-                0.01<span className="text-brand text-2xl">%</span>
-              </div>
-              <p className="text-muted text-xs mt-3">
-                Zero packet drop architecture. Automated instant retry queuing
-                with exponential backoff algorithm.
-              </p>
-            </div>
-            <div className="mt-6 flex items-center justify-between font-mono text-[11px] pt-4 border-t border-line">
-              <span className="text-muted">Max Loss: 0.10%</span>
-              <span className="text-ok font-semibold">VERIFIED</span>
-            </div>
-          </div>
-
-          <div className="p-8 rounded-2xl bg-card border border-line flex flex-col justify-between">
-            <div>
-              <span className="label-caps text-subtle">
-                GLOBAL AVAILABILITY
-              </span>
-              <div className="font-display font-extrabold text-4xl text-white mt-2">
-                99.99<span className="text-brand text-2xl">%</span>
-              </div>
-              <p className="text-muted text-xs mt-3">
-                Multi-region Kubernetes deployment with Postgres replica
-                clustering and Redis sentinel failover.
-              </p>
-            </div>
-            <div className="mt-6 flex items-center justify-between font-mono text-[11px] pt-4 border-t border-line">
-              <span className="text-muted">Baseline: 99.90%</span>
-              <span className="text-ok font-semibold">COMPLIANT</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 9. Final Call to Action */}
-      <section className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="relative ph-card p-10 sm:p-16 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="absolute -left-12 -bottom-12 w-64 h-64 rounded-full bg-brand/15 blur-3xl pointer-events-none" />
-          <div className="max-w-xl z-10 text-left">
-            <span className="label-caps text-brand">GET STARTED TODAY</span>
-            <h2 className="font-display font-bold text-3xl sm:text-5xl text-white mt-2 leading-tight">
-              Ready to scale mission-critical dispatch?
-            </h2>
-            <p className="text-muted text-sm mt-3">
-              Deploy your first notification in under two minutes with our SDK
-              or live dispatch console.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 z-10">
-            <Link
-              href="/composer"
-              className="btn-glow px-8 py-4 rounded-full bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(254,88,36,0.5)] transition-all"
-            >
-              <span>Launch Composer</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-7 py-4 rounded-full bg-card hover:bg-card-hover border border-line text-white font-medium text-xs flex items-center justify-center transition-all"
-            >
-              <span>Explore Metrics</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 10. Editorial Footer */}
-      <footer className="border-t border-line/60 bg-surface/40 py-16 px-6 sm:px-12 text-xs font-mono text-muted">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-8">
-          <div className="col-span-2 flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-brand" />
-              <span className="font-display font-extrabold text-base tracking-tight text-white">
-                PULSE
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-line text-brand">
-                v2.4
+              <span className="font-mono text-[10px] text-faint">
+                {fmtClock(row.created_at)}
               </span>
             </div>
-            <p className="text-subtle text-xs leading-relaxed max-w-sm font-sans">
-              High-velocity notification engine and background job orchestration
-              for mission-critical telemetry, distributed across Tier-1 carriers
-              and edge clusters.
-            </p>
-            <div className="flex items-center gap-2 text-ok text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-ok" />
-              <span>All Systems Operational (99.992% SLA)</span>
-            </div>
-          </div>
+          );
+        })}
+      </div>
 
-          <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-3">
-              Product
-            </h4>
-            <ul className="space-y-2 text-muted">
-              <li>
-                <Link
-                  href="/dashboard"
-                  className="hover:text-white transition-colors"
-                >
-                  Telemetry Console
+      <div className="flex items-center justify-between border-t border-line px-4 py-3">
+        <span className="text-[11px] text-faint">
+          Preview with sample data.
+        </span>
+        <Link
+          href="/logs"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-ink hover:text-accent-ink"
+        >
+          Open deliveries
+          <ArrowRight className="size-3" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-dvh bg-canvas">
+      <SiteHeader />
+
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden border-b border-line">
+          <div className="grid-paper pointer-events-none absolute inset-0 opacity-[0.32] [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]" />
+          <div className="relative mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-14 px-5 pt-14 pb-16 sm:px-8 lg:grid-cols-12 lg:gap-12 lg:pt-24 lg:pb-24">
+            <div className="min-w-0 lg:col-span-7">
+              <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.08em] text-muted uppercase">
+                <span className="dot bg-accent" />
+                Notification infrastructure · v{VERSION}
+              </div>
+
+              <h1 className="mt-7 max-w-[15ch] font-display text-[clamp(3rem,7.2vw,5.8rem)] leading-[0.94] font-semibold tracking-[-0.055em]">
+                Messages that send. Proof of what happened.
+              </h1>
+
+              <p className="mt-6 max-w-[50ch] text-[17px] leading-relaxed text-muted sm:text-lg">
+                Pulse sends email, SMS and push through one API — with priority
+                queues, retries and an inspectable trace for every send.
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link href="/composer" className="btn btn-primary h-12 px-5">
+                  Start sending
+                  <ArrowRight className="size-4" />
                 </Link>
-              </li>
-              <li>
+                <Link href="/dashboard" className="btn btn-secondary h-12 px-5">
+                  See the console
+                </Link>
+              </div>
+
+              <ul className="mt-9 flex flex-wrap gap-4 gap-y-2 border-t border-line pt-5 text-[12px] text-muted">
+                {[
+                  "Idempotent requests",
+                  "Priority routing",
+                  "Per-message traces",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <Check className="size-3.5 text-accent" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="min-w-0 lg:col-span-5 lg:pt-2">
+              <HeroTrace />
+            </div>
+          </div>
+
+          <svg
+            viewBox="0 0 1440 80"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full text-line-strong/50"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 54h280l14-26 18 48 15-38 10 16h180l14-22 17 40 14-18h210l15-30 18 52 16-42 11 20h200l14-24 17 42 14-18h200l15-28 18 50 14-40 10 18h170"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </section>
+
+        {/* Channels */}
+        <section className="border-b border-line bg-surface/50">
+          <div className="mx-auto grid w-full max-w-[1280px] divide-y divide-line px-5 sm:px-8 md:grid-cols-3 md:divide-x md:divide-y-0">
+            {channels.map((channel) => {
+              const Icon = channel.icon;
+              return (
+                <div
+                  key={channel.name}
+                  className="px-0 py-6 md:px-7 md:first:pl-0 md:last:pr-0"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="size-4 text-accent" />
+                    <p className="text-[13px] font-medium">{channel.name}</p>
+                    <span className="font-mono text-[9px] tracking-[0.08em] text-faint uppercase">
+                      {channel.provider}
+                    </span>
+                  </div>
+                  <p className="mt-2 max-w-[34ch] text-[12px] leading-relaxed text-muted">
+                    {channel.copy}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Provider strip */}
+        <div className="border-b border-line">
+          <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-5 py-4 sm:gap-4 sm:px-8">
+            <span className="font-mono text-[9px] tracking-[0.12em] text-faint uppercase">
+              Connects to
+            </span>
+            {["FCM", "Twilio", "SMTP"].map((provider) => (
+              <span
+                key={provider}
+                className="text-[11px] font-medium whitespace-nowrap text-muted/80 sm:text-[12px]"
+              >
+                {provider}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Product */}
+        <section id="product" className="scroll-mt-20 border-b border-line">
+          <div className="mx-auto grid w-full max-w-[1280px] gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-12 lg:gap-16">
+            <div className="min-w-0 lg:col-span-4">
+              <p className="eyebrow">One request</p>
+              <h2 className="mt-4 max-w-[13ch] font-display text-4xl leading-[0.98] font-semibold tracking-[-0.045em] sm:text-5xl">
+                One request. One channel.
+              </h2>
+              <p className="mt-5 max-w-[40ch] text-[15px] leading-relaxed text-muted">
+                Stop stitching provider SDKs together. Send one request and let
+                Pulse queue it, retry the attempt and keep the provider
+                response.
+              </p>
+
+              <ul className="mt-9 space-y-5">
+                {[
+                  {
+                    title: "Idempotent requests",
+                    copy: "Retrying with the same idempotency key cannot create a second message.",
+                  },
+                  {
+                    title: "Priority queues",
+                    copy: "An OTP template routes to high_priority rather than the low-priority queue.",
+                  },
+                  {
+                    title: "Retries with backoff",
+                    copy: "Failed provider attempts are retried until the attempt budget is spent.",
+                  },
+                ].map((item) => (
+                  <li key={item.title} className="flex gap-3">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-line bg-surface">
+                      <Check className="size-3 text-accent" />
+                    </span>
+                    <div>
+                      <p className="text-[13px] font-medium">{item.title}</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
+                        {item.copy}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="grid min-w-0 gap-5 lg:col-span-8 xl:grid-cols-12">
+              <div className="min-w-0 xl:col-span-7">
+                <CodePanel />
+              </div>
+              <div className="min-w-0 xl:col-span-5">
+                <RoutingPanel />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Delivery */}
+        <section id="delivery" className="scroll-mt-20 border-b border-line">
+          <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-12 lg:gap-16">
+            <div className="min-w-0 lg:col-span-5">
+              <p className="eyebrow">Observability</p>
+              <h2 className="mt-4 max-w-[12ch] font-display text-4xl leading-[0.98] font-semibold tracking-[-0.045em] sm:text-5xl">
+                A trace for every message.
+              </h2>
+              <p className="mt-5 max-w-[42ch] text-[15px] leading-relaxed text-muted">
+                Delivery is not a promise, it is a record. Follow a message from
+                the first request through every queue, provider call and retry.
+              </p>
+
+              <div className="mt-10 divide-y divide-line border-t border-line">
+                {[
+                  [
+                    "01",
+                    "Accepted",
+                    "Request persisted and idempotency checked.",
+                  ],
+                  ["02", "Routed", "Priority queue and channel selected."],
+                  [
+                    "03",
+                    "Acknowledged",
+                    "Provider response attached to the trace.",
+                  ],
+                ].map(([number, title, copy]) => (
+                  <div
+                    key={title}
+                    className="grid grid-cols-[2.5rem_1fr] gap-4 py-4"
+                  >
+                    <span className="font-mono text-[10px] text-faint">
+                      {number}
+                    </span>
+                    <div>
+                      <p className="text-[13px] font-medium">{title}</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
+                        {copy}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="min-w-0 lg:col-span-7">
+              <ConsolePreview />
+            </div>
+          </div>
+        </section>
+
+        {/* Principles */}
+        <section className="border-b border-line bg-surface/45">
+          <div className="mx-auto grid w-full max-w-[1280px] gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-12 lg:gap-16">
+            <div className="min-w-0 lg:col-span-4">
+              <p className="eyebrow">Operating principles</p>
+              <h2 className="mt-4 max-w-[11ch] font-display text-4xl leading-[0.98] font-semibold tracking-[-0.045em] sm:text-5xl">
+                Built for the people on call.
+              </h2>
+              <p className="mt-5 max-w-[38ch] text-[15px] leading-relaxed text-muted">
+                When a message matters, the tooling should make the next step
+                obvious — not hide it behind another dashboard.
+              </p>
+            </div>
+
+            <div className="divide-y divide-line border-t border-line lg:col-span-8">
+              {principles.map((principle) => (
+                <div
+                  key={principle.title}
+                  className="grid gap-2 py-6 sm:grid-cols-[16rem_1fr] sm:gap-8"
+                >
+                  <h3 className="font-display text-xl font-semibold tracking-[-0.025em]">
+                    {principle.title}
+                  </h3>
+                  <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">
+                    {principle.copy}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="mx-auto w-full max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
+          <div className="ink-panel relative overflow-hidden px-6 py-12 sm:px-12 sm:py-16">
+            <svg
+              viewBox="0 0 600 200"
+              className="pointer-events-none absolute -right-16 -bottom-10 h-56 w-[34rem] text-white/[0.07]"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M0 140h100l14-40 20 78 18-62 12 24h90l14-34 18 64 16-46 12 16h100l14-28 18 52 16-38 12 14h100"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+
+            <div className="relative grid gap-8 md:grid-cols-12 md:items-end">
+              <div className="md:col-span-7">
+                <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.12em] text-white/60 uppercase">
+                  <Webhook className="size-3.5" />
+                  Start here
+                </div>
+                <h2 className="mt-4 max-w-[13ch] font-display text-4xl leading-[0.98] font-semibold tracking-[-0.045em] text-white sm:text-5xl">
+                  Start with one message.
+                </h2>
+                <p className="mt-4 max-w-[44ch] text-[14px] leading-relaxed text-white/70">
+                  Bring a template and a destination. The composer sends the
+                  request through your configured providers and records the
+                  trace.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 md:col-span-5 md:items-end">
                 <Link
                   href="/composer"
-                  className="hover:text-white transition-colors"
+                  className="btn h-12 w-full bg-white px-5 text-ink hover:bg-white/90 md:w-auto"
                 >
-                  Dispatch Composer
+                  Open the composer
+                  <ArrowRight className="size-4" />
                 </Link>
-              </li>
-              <li>
-                <Link
-                  href="/gateways"
-                  className="hover:text-white transition-colors"
-                >
-                  Routing Mesh
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/logs"
-                  className="hover:text-white transition-colors"
-                >
-                  Egress Stream
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-3">
-              Developers
-            </h4>
-            <ul className="space-y-2 text-muted">
-              <li>
-                <a
-                  href="#architecture"
-                  className="hover:text-white transition-colors"
-                >
-                  API Reference
-                </a>
-              </li>
-              <li>
                 <Link
                   href="/pricing"
-                  className="hover:text-white transition-colors"
+                  className="inline-flex h-10 items-center gap-1.5 text-[12px] text-white/65 transition-colors hover:text-white"
                 >
-                  SLA Tiers
+                  See pricing
+                  <ArrowUpRight className="size-3.5" />
                 </Link>
-              </li>
-              <li>
-                <a
-                  href="http://localhost:8000/api/docs/"
-                  target="_blank"
-                  className="hover:text-white transition-colors"
-                >
-                  Swagger OpenAPI
-                </a>
-              </li>
-              <li>
-                <a
-                  href="http://localhost:5555"
-                  target="_blank"
-                  className="hover:text-white transition-colors"
-                >
-                  Flower Tasks
-                </a>
-              </li>
-            </ul>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-3">
-              Compliance
-            </h4>
-            <ul className="space-y-2 text-muted">
-              <li>SOC2 Type II</li>
-              <li>ISO 27001</li>
-              <li>HIPAA BAA</li>
-              <li>GDPR Compliant</li>
-            </ul>
+        {/* Quiet closing note */}
+        <section className="border-t border-line">
+          <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <div className="flex items-center gap-2 text-[12px] text-muted">
+              <ShieldCheck className="size-4 text-ok" />
+              Every accepted send is authenticated and recorded.
+            </div>
+            <div className="flex items-center gap-5 text-[12px] text-faint">
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="size-3.5" /> Retries with backoff
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="size-3.5" /> Idempotency keys enforced
+              </span>
+            </div>
           </div>
-        </div>
+        </section>
+      </main>
 
-        <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-4 text-subtle text-[11px]">
-          <span>
-            © 2026 Pulse Telemetry Infrastructure Inc. All rights reserved.
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-muted cursor-pointer">
-              Security Protocol
-            </span>
-            <span>•</span>
-            <span className="hover:text-muted cursor-pointer">
-              Privacy Policy
-            </span>
-            <span>•</span>
-            <span className="hover:text-muted cursor-pointer">
-              Terms of Dispatch
-            </span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

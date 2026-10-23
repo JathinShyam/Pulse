@@ -1,373 +1,379 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { motion } from "framer-motion";
 import {
-  Activity,
   ArrowRight,
+  ArrowUpRight,
   Bell,
-  Check,
-  CheckCircle2,
-  Cpu,
   Globe,
-  Layers,
-  Lock,
   Mail,
-  MessageSquare,
-  Network,
-  Plus,
+  MessageSquareText,
   Radio,
-  RefreshCw,
   Server,
-  Shield,
-  Smartphone,
-  Zap,
+  ShieldCheck,
 } from "lucide-react";
 import { ConsoleShell } from "@/components/console-shell";
+import { PulseMark } from "@/components/logo";
+
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.1.0";
+
+const routes = [
+  {
+    name: "SMTP",
+    channel: "Email",
+    endpoint: "EMAIL_HOST",
+    config: "EMAIL_*",
+    note: "Django SMTP backend",
+    icon: Mail,
+  },
+  {
+    name: "Twilio",
+    channel: "SMS",
+    endpoint: "api.twilio.com",
+    config: "TWILIO_*",
+    note: "Twilio Messages API",
+    icon: MessageSquareText,
+  },
+  {
+    name: "Firebase Cloud Messaging",
+    channel: "Push",
+    endpoint: "fcm.googleapis.com",
+    config: "FIREBASE_CREDENTIALS_FILE",
+    note: "Set PUSH_BACKEND=fcm for live push",
+    icon: Bell,
+  },
+];
+
+const policies = [
+  {
+    match: "priority: high",
+    title: "Explicit priority",
+    copy: "An explicit high priority always wins over template keywords and selects the high-priority queue.",
+    queue: "high_priority",
+  },
+  {
+    match: "otp_login",
+    title: "OTP-like template names",
+    copy: "When priority is omitted, template names containing the configured OTP keywords route to the high-priority queue.",
+    queue: "high_priority",
+  },
+  {
+    match: "priority: low / default",
+    title: "Low priority",
+    copy: "An explicit low priority overrides OTP keywords. Templates without a priority override or OTP keyword also route to the low-priority queue.",
+    queue: "low_priority",
+  },
+];
 
 export default function GatewaysPage() {
-  const [activeTab, setActiveTab] = useState<"topology" | "rules">("topology");
-
-  const gatewayTrunks = [
-    {
-      name: "Apple APNs Edge Gateway",
-      provider: "apns-direct.push.apple.com",
-      status: "PRIMARY LIVE",
-      latency: "18ms",
-      failover: "Cascade to FCM v1 on timeout > 1.2s",
-      success: "99.99%",
-      velocity: "1.8M/hr",
-      type: "push",
-    },
-    {
-      name: "Google FCM Direct Driver",
-      provider: "fcm.googleapis.com/v1",
-      status: "PRIMARY LIVE",
-      latency: "22ms",
-      failover: "Cascade to APNs or direct SMS",
-      success: "99.98%",
-      velocity: "2.4M/hr",
-      type: "push",
-    },
-    {
-      name: "AWS SES TLS FastPool",
-      provider: "email-smtp.us-east-1.amazonaws.com",
-      status: "PRIMARY LIVE",
-      latency: "46ms",
-      failover: "Cascade to SparkPost on reputation dip",
-      success: "99.95%",
-      velocity: "1.1M/hr",
-      type: "email",
-    },
-    {
-      name: "Twilio Super Network",
-      provider: "api.twilio.com/2010-04-01",
-      status: "PRIMARY LIVE",
-      latency: "82ms",
-      failover: "Instant failover to Sinch SMPP 10.4",
-      success: "99.92%",
-      velocity: "620k/hr",
-      type: "sms",
-    },
-    {
-      name: "Sinch Global SMPP Pipe",
-      provider: "smpp.sinch.com:2775",
-      status: "HOT STANDBY",
-      latency: "94ms",
-      failover: "Failover for APAC / LATAM routes",
-      success: "99.88%",
-      velocity: "240k/hr",
-      type: "sms",
-    },
-    {
-      name: "SparkPost Enterprise Pool",
-      provider: "smtp.sparkpostmail.com:587",
-      status: "COLD BACKUP",
-      latency: "110ms",
-      failover: "Circuit breaker activated if AWS dropped",
-      success: "99.90%",
-      velocity: "Standby",
-      type: "email",
-    },
-  ];
-
   return (
     <ConsoleShell activePath="gateways">
-      <div className="flex flex-col gap-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-line">
+      <div className="space-y-7">
+        <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="label-caps text-subtle">
-              <span>05 // INFRASTRUCTURE TOPOLOGY // CARRIER MESH MATRIX</span>
-            </div>
-            <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight mt-1">
-              Routing Topology &amp; Protocols
+            <p className="eyebrow">Gateways</p>
+            <h1 className="mt-2 font-display text-[2.6rem] leading-none font-semibold tracking-[-0.05em] sm:text-[3.2rem]">
+              Routing & providers
             </h1>
+            <p className="mt-3 max-w-[56ch] text-[13px] leading-relaxed text-muted">
+              The provider adapters Pulse supports for each channel. Channel and
+              priority are explicit; retries stay on the same channel.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs px-3 py-1 rounded-full bg-surface border border-line text-brand">
-              INGESTION: 2.4M msg/sec
+          <div className="flex items-center gap-2">
+            <span className="badge border-line bg-surface px-2.5 py-1 text-[10px]">
+              Provider adapters
             </span>
-            <button
-              onClick={() => alert("Gateway configuration modal.")}
-              className="btn-glow flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Gateway Endpoint</span>
-            </button>
+            <Link href="/logs" className="btn btn-secondary btn-sm px-3">
+              View traces
+              <ArrowUpRight className="size-3" />
+            </Link>
           </div>
-        </div>
+        </header>
 
-        {/* 4 Metric Cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-card border border-line">
-            <div className="flex items-center justify-between text-subtle label-caps">
-              <span>01 // ACTIVE NODES</span>
-              <span className="w-2 h-2 rounded-full bg-ok animate-pulse" />
+        {/* Ledger */}
+        <section className="grid grid-cols-2 gap-px border-y border-line bg-line sm:grid-cols-4">
+          {[
+            ["Channels", "3", "Email · SMS · push"],
+            ["Queues", "2", "high_priority · low_priority"],
+            ["Adapters", String(routes.length), "One per channel"],
+            ["Fallback", "None", "Retries reuse the channel"],
+          ].map(([label, value, detail]) => (
+            <div key={label} className="bg-canvas px-4 py-5 sm:px-6">
+              <p className="label">{label}</p>
+              <p className="stat mt-3">{value}</p>
+              <p className="mt-1.5 text-[11px] text-muted">{detail}</p>
             </div>
-            <div className="mt-2 font-display font-bold text-2xl text-white">
-              194 <span className="text-muted text-sm font-normal">/ 194</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-muted">
-              <span>BGP Mesh: 100%</span>
-              <span className="text-ok font-semibold">12 REGIONS</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-card border border-line">
-            <div className="flex items-center justify-between text-subtle label-caps">
-              <span>02 // PROPAGATION</span>
-              <span className="text-ok font-bold">P99: 48ms</span>
-            </div>
-            <div className="mt-2 font-display font-bold text-2xl text-white">
-              34.2{" "}
-              <span className="font-mono text-xs text-muted font-normal">
-                ms
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-muted">
-              <span>Edge Round-Trip</span>
-              <span className="text-brand font-semibold">TCP OPT ACTIVE</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-card border border-line">
-            <div className="flex items-center justify-between text-subtle label-caps">
-              <span>03 // REDUNDANT PATHS</span>
-              <span className="text-brand font-bold">HOT STANDBY</span>
-            </div>
-            <div className="mt-2 font-display font-bold text-2xl text-white">
-              14 <span className="text-muted text-sm font-normal">Paths</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-muted">
-              <span>Auto-Failover Circuit</span>
-              <span className="text-ok font-semibold">ZERO DROP</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-card border border-line">
-            <div className="flex items-center justify-between text-subtle label-caps">
-              <span>04 // BANDWIDTH</span>
-              <span className="text-ok font-bold">NOMINAL</span>
-            </div>
-            <div className="mt-2 font-display font-bold text-2xl text-white">
-              41.8{" "}
-              <span className="font-mono text-xs text-muted font-normal">
-                %
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-muted">
-              <span>Capacity: 8.1M/s</span>
-              <span className="text-muted">BURSTABLE</span>
-            </div>
-          </div>
+          ))}
         </section>
 
-        {/* Visual Topology Diagram Card */}
-        <section className="p-6 rounded-2xl bg-card border border-line flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <span className="label-caps text-subtle">
-              ACTIVE EDGE TRANSIT MESH &amp; CORE SWITCHING
-            </span>
-            <span className="label-caps text-ok font-mono">
-              LINK SATURATION: OPTIMAL
-            </span>
+        {/* Topology */}
+        <section className="panel overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <h2 className="text-[14px] font-semibold">Routing topology</h2>
+              <p className="mt-0.5 text-[11px] text-muted">
+                Request ingress to the selected channel adapter.
+              </p>
+            </div>
           </div>
 
-          <div className="py-6 flex flex-col md:flex-row items-center justify-around gap-6 text-center font-mono">
-            {/* Ingress */}
-            <div className="p-4 rounded-xl bg-surface border border-line w-48 flex flex-col items-center">
-              <Radio className="w-6 h-6 text-brand mb-2" />
-              <span className="text-white font-bold text-xs">
-                Ingress Gateway
-              </span>
-              <span className="text-subtle text-[10px] mt-0.5">
-                TLS 1.3 / QUIC 0-RTT
-              </span>
-              <span className="mt-2 px-2 py-0.5 rounded bg-brand/10 text-brand text-[9px] font-bold">
-                142.1M PKT/S
-              </span>
+          <div className="grid items-stretch gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_auto_1fr_auto_1.15fr] lg:items-center">
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <div className="flex items-center gap-2 text-faint">
+                <Globe className="size-4" />
+                <span className="label">Ingress</span>
+              </div>
+              <p className="mt-4 font-mono text-[11px] break-all text-ink">
+                POST /api/notifications/send/
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {["API key / JWT", `Schema v${VERSION}`, "Idempotent"].map(
+                  (item) => (
+                    <span
+                      key={item}
+                      className="rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[9px] text-faint"
+                    >
+                      {item}
+                    </span>
+                  ),
+                )}
+              </div>
             </div>
 
-            <ArrowRight className="w-5 h-5 text-brand hidden md:block" />
-
-            {/* Core Router */}
-            <div className="p-5 rounded-2xl bg-pitch border border-brand/50 w-56 flex flex-col items-center shadow-[0_0_24px_rgba(254,88,36,0.25)]">
-              <Zap className="w-8 h-8 text-brand animate-pulse mb-1.5" />
-              <span className="font-display font-bold text-sm text-white">
-                PULSE MATRIX CORE
-              </span>
-              <span className="text-subtle text-[10px]">
-                Zero Loss Dispatch Buffer
-              </span>
-              <span className="mt-2 text-ok text-[11px] font-bold">
-                48 ACTIVE WORKERS
-              </span>
+            <div className="hidden items-center gap-1 lg:flex">
+              <span className="h-px w-6 bg-line" />
+              <ArrowRight className="size-3 text-faint" />
             </div>
 
-            <ArrowRight className="w-5 h-5 text-brand hidden md:block" />
+            <div className="rounded-xl border border-ink/15 bg-ink p-4 text-white">
+              <div className="flex items-center gap-2 text-white/65">
+                <PulseMark className="size-4 text-accent" />
+                <span className="font-mono text-[9px] tracking-[0.12em] uppercase">
+                  Router
+                </span>
+              </div>
+              <p className="mt-4 text-[13px] font-medium">Priority router</p>
+              <div className="mt-3 space-y-1.5">
+                {[
+                  ["High", "priority: high · OTP (priority omitted)"],
+                  ["Low", "priority: low · default"],
+                ].map(([queue, copy]) => (
+                  <div
+                    key={queue}
+                    className="flex items-center justify-between gap-3 text-[10px]"
+                  >
+                    <span className="font-mono text-white/65 uppercase">
+                      {queue}
+                    </span>
+                    <span className="text-right text-white/55">{copy}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            {/* Egress Gateways */}
-            <div className="flex flex-col gap-2 w-48 text-left text-xs">
-              <div className="p-2 rounded-lg bg-surface border border-line flex items-center justify-between">
-                <span className="text-white">APNs HTTP/2</span>
-                <span className="text-ok font-bold text-[10px]">18ms</span>
-              </div>
-              <div className="p-2 rounded-lg bg-surface border border-line flex items-center justify-between">
-                <span className="text-white">Google FCM</span>
-                <span className="text-ok font-bold text-[10px]">22ms</span>
-              </div>
-              <div className="p-2 rounded-lg bg-surface border border-line flex items-center justify-between">
-                <span className="text-white">AWS SES Mail</span>
-                <span className="text-cyan-400 font-bold text-[10px]">
-                  46ms
+            <div className="hidden items-center gap-1 lg:flex">
+              <span className="h-px w-6 bg-line" />
+              <ArrowRight className="size-3 text-faint" />
+            </div>
+
+            <div className="rounded-xl border border-line bg-surface">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <div className="flex items-center gap-2 text-faint">
+                  <Server className="size-4" />
+                  <span className="label">Adapters</span>
+                </div>
+                <span className="font-mono text-[9px] text-faint">
+                  {routes.length} adapters
                 </span>
               </div>
-              <div className="p-2 rounded-lg bg-surface border border-line flex items-center justify-between">
-                <span className="text-white">Twilio SMPP</span>
-                <span className="text-purple-400 font-bold text-[10px]">
-                  82ms
-                </span>
+              <div className="divide-y divide-line">
+                {routes.map((route) => {
+                  const Icon = route.icon;
+                  return (
+                    <div
+                      key={route.name}
+                      className="flex items-center gap-2.5 px-4 py-2.5"
+                    >
+                      <Icon className="size-3.5 text-faint" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px]">{route.name}</p>
+                        <p className="font-mono text-[9px] text-faint">
+                          {route.channel}
+                        </p>
+                      </div>
+                      <span className="dot bg-line-strong" />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </section>
 
-        {/* Carrier Gateways Table */}
-        <section className="p-5 rounded-2xl bg-card border border-line flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <span className="label-caps text-subtle">
-              CARRIER GATEWAY &amp; REDUNDANCY TOPOLOGY
-            </span>
-            <span className="font-mono text-xs text-brand font-semibold">
-              12 CHANNELS ACTIVE
-            </span>
+        {/* Routes */}
+        <section className="panel overflow-hidden">
+          <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+            <div>
+              <h2 className="text-[14px] font-semibold">Provider routes</h2>
+              <p className="mt-0.5 text-[11px] text-muted">
+                One adapter per channel. Credentials are read from the
+                environment at runtime.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
+            <table className="w-full text-left text-[12px] lg:min-w-[760px]">
               <thead>
-                <tr className="text-subtle label-caps border-b border-line">
-                  <th className="py-2.5 px-3">GATEWAY / PROVIDER TRUNK</th>
-                  <th className="py-2.5 px-3">STATUS</th>
-                  <th className="py-2.5 px-3">P95 LATENCY</th>
-                  <th className="py-2.5 px-3">FAILOVER CASCADE PATH</th>
-                  <th className="py-2.5 px-3 text-right">SUCCESS RATE</th>
+                <tr className="border-b border-line">
+                  {["Route", "Channel", "Endpoint", "Configuration"].map(
+                    (heading) => (
+                      <th
+                        key={heading}
+                        className="px-4 py-2.5 font-mono text-[10px] font-medium tracking-[0.1em] text-faint uppercase first:pl-6 last:pr-6"
+                      >
+                        {heading}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line/40">
-                {gatewayTrunks.map((gw, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-surface/60 transition-colors"
-                  >
-                    <td className="py-3 px-3">
-                      <div className="font-sans font-bold text-white text-xs">
-                        {gw.name}
-                      </div>
-                      <div className="text-subtle text-[11px]">
-                        {gw.provider}
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      <span
-                        className={`inline-flex items-center gap-1 label-caps px-2 py-0.5 rounded-full ${
-                          gw.status.includes("PRIMARY")
-                            ? "bg-ok/10 text-ok border border-ok/30"
-                            : "bg-surface text-muted border border-line"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            gw.status.includes("PRIMARY")
-                              ? "bg-ok animate-pulse"
-                              : "bg-muted"
-                          }`}
-                        />
-                        {gw.status}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-3 text-white font-bold">
-                      {gw.latency}
-                    </td>
-                    <td className="py-3 px-3 text-muted text-[11px]">
-                      {gw.failover}
-                    </td>
-                    <td className="py-3 px-3 text-ok font-bold text-right">
-                      {gw.success}
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {routes.map((route) => {
+                  const Icon = route.icon;
+                  return (
+                    <tr
+                      key={route.name}
+                      className="border-b border-line last:border-b-0 hover:bg-surface-2/45"
+                    >
+                      <td className="py-3 pr-4 pl-6">
+                        <div className="flex items-center gap-2.5">
+                          <Icon className="size-3.5 text-faint" />
+                          <div>
+                            <p className="text-[12px] font-medium">
+                              {route.name}
+                            </p>
+                            <p className="mt-0.5 text-[9px] text-faint">
+                              {route.note}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[11px] text-muted">
+                        {route.channel}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-muted">
+                        {route.endpoint}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-faint">
+                        {route.config}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* Multi-Tier Cascade & Fallback Rules */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-card border border-line">
-            <span className="label-caps text-brand">
-              RULE #01 — CRITICAL P0
-            </span>
-            <h3 className="font-display font-bold text-base text-white mt-1">
-              Security &amp; Core Alert Cascade
-            </h3>
-            <p className="text-muted text-xs mt-2 leading-relaxed">
-              APNs Multi-Pipe &rarr; FCM v1 Direct Handshake &rarr; Immediate
-              Tier-1 SMS dispatch if carrier remains unacknowledged after 1.2
-              seconds.
-            </p>
+        {/* Policies */}
+        <section className="grid gap-6 xl:grid-cols-12">
+          <div className="panel overflow-hidden xl:col-span-8">
+            <div className="border-b border-line px-5 py-4 sm:px-6">
+              <h2 className="text-[14px] font-semibold">Routing policy</h2>
+              <p className="mt-0.5 text-[11px] text-muted">
+                Priority affects queue order. It never changes the channel.
+              </p>
+            </div>
+            <div className="divide-y divide-line">
+              {policies.map((policy) => (
+                <div key={policy.match} className="px-5 py-5 sm:px-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[9px] text-muted">
+                          {policy.match}
+                        </span>
+                        <h3 className="text-[12px] font-medium">
+                          {policy.title}
+                        </h3>
+                      </div>
+                      <p className="mt-2 max-w-[56ch] text-[11px] leading-relaxed text-muted">
+                        {policy.copy}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-left sm:text-right">
+                      <code className="inline-flex rounded border border-line bg-surface px-2 py-1 font-mono text-[9px] text-muted">
+                        {policy.queue}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-card border border-line">
-            <span className="label-caps text-cyan-400">
-              RULE #02 — AUTH OTP
-            </span>
-            <h3 className="font-display font-bold text-base text-white mt-1">
-              Transactional OTP Fallback
-            </h3>
-            <p className="text-muted text-xs mt-2 leading-relaxed">
-              SMS direct carrier bind &rarr; Instant Voice Call OTP fallback
-              &rarr; Encrypted Push Token dispatch if mobile carrier
-              unreachable.
-            </p>
-          </div>
+          <div className="space-y-6 xl:col-span-4">
+            <div className="panel p-5">
+              <div className="flex items-center gap-2">
+                <Radio className="size-4 text-accent" />
+                <h2 className="text-[13px] font-semibold">How retries work</h2>
+              </div>
+              <div className="mt-4 space-y-3.5">
+                {[
+                  [
+                    "01",
+                    "Claim the send",
+                    "The log moves to sending before the provider call, so concurrent duplicate executions skip.",
+                  ],
+                  [
+                    "02",
+                    "Record the result",
+                    "The latest provider response or error and the attempt count stay attached to the trace.",
+                  ],
+                  [
+                    "03",
+                    "Retry the same channel",
+                    "Transient failures retry with exponential backoff until the attempt budget is spent, then fail.",
+                  ],
+                ].map(([number, title, copy]) => (
+                  <div key={number} className="flex gap-3">
+                    <span className="font-mono text-[9px] text-faint">
+                      {number}
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-medium">{title}</p>
+                      <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
+                        {copy}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          <div className="p-5 rounded-2xl bg-card border border-line">
-            <span className="label-caps text-purple-400">
-              RULE #03 — BATCH DIGEST
-            </span>
-            <h3 className="font-display font-bold text-base text-white mt-1">
-              Enterprise Digested Egress
-            </h3>
-            <p className="text-muted text-xs mt-2 leading-relaxed">
-              Bulk email batching through AWS SES High-Throughput &rarr;
-              Immediate automated failover to SparkPost Enterprise pool.
-            </p>
+            <div className="ink-panel p-5">
+              <div className="flex items-center gap-2 text-white/65">
+                <ShieldCheck className="size-4 text-accent" />
+                <span className="font-mono text-[9px] tracking-[0.12em] uppercase">
+                  Delivery contract
+                </span>
+              </div>
+              <p className="mt-4 text-[13px] leading-relaxed text-white/85">
+                A send is marked sent only after the provider returns an
+                acknowledgement. That is not proof the recipient read the
+                message, and a queued request is not a delivered message.
+              </p>
+              <Link
+                href="/logs"
+                className="mt-5 inline-flex items-center gap-1 text-[11px] font-medium text-white/70 transition-colors hover:text-white"
+              >
+                Inspect send traces
+                <ArrowUpRight className="size-3" />
+              </Link>
+            </div>
           </div>
         </section>
       </div>

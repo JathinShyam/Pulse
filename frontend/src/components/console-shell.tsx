@@ -2,305 +2,304 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  Activity,
-  ArrowRight,
-  Bell,
-  Cpu,
-  Database,
-  ExternalLink,
-  Flame,
-  Globe,
-  Grid,
-  Layers,
-  Lock,
+  ArrowUpRight,
+  HelpCircle,
+  LayoutDashboard,
+  ListFilter,
   LogOut,
   Menu,
-  Radio,
-  Rocket,
+  Plus,
   Search,
+  Send,
   Server,
-  Shield,
-  Terminal,
-  User,
-  Zap,
   X,
 } from "lucide-react";
-import { tokens } from "@/lib/api";
+import { Logo, PulseMark } from "@/components/logo";
+import { endSession } from "@/lib/api";
+import { useMe } from "@/lib/queries";
+import { cn } from "@/lib/utils";
+
+const ENVIRONMENT = process.env.NEXT_PUBLIC_ENVIRONMENT || "Local";
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.1.0";
+const DOCS_URL = process.env.NEXT_PUBLIC_API_DOCS_URL || "/api/docs/";
 
 interface ConsoleShellProps {
   children: React.ReactNode;
-  activePath?: "overview" | "composer" | "logs" | "gateways" | "pricing";
+  activePath?: "overview" | "composer" | "logs" | "gateways";
+}
+
+const NAV = [
+  {
+    href: "/dashboard",
+    label: "Overview",
+    icon: LayoutDashboard,
+    key: "overview",
+  },
+  { href: "/composer", label: "Composer", icon: Send, key: "composer" },
+  { href: "/logs", label: "Deliveries", icon: ListFilter, key: "logs" },
+  { href: "/gateways", label: "Gateways", icon: Server, key: "gateways" },
+] as const;
+
+const TITLES: Record<string, string> = {
+  "/dashboard": "Overview",
+  "/composer": "Composer",
+  "/logs": "Deliveries",
+  "/gateways": "Gateways",
+};
+
+function initials(value?: string | null) {
+  if (!value) return "OP";
+  const name = value.split("@")[0].replace(/[^a-zA-Z]/g, " ");
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase() || "OP";
+  }
+  return (
+    parts
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "OP"
+  );
 }
 
 export function ConsoleShell({ children, activePath }: ConsoleShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
+  const me = useMe();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const navItems = [
-    {
-      label: "Analytics & KPI",
-      href: "/dashboard",
-      icon: Activity,
-      key: "overview",
-      badge: "LIVE",
-    },
-    {
-      label: "Dispatch Composer",
-      href: "/composer",
-      icon: Rocket,
-      key: "composer",
-      badge: "P0",
-    },
-    {
-      label: "Logs & Telemetry",
-      href: "/logs",
-      icon: Terminal,
-      key: "logs",
-      badge: "0-RTT",
-    },
-    {
-      label: "Gateways & Mesh",
-      href: "/gateways",
-      icon: Server,
-      key: "gateways",
-      badge: "48/48",
-    },
-    {
-      label: "Pricing & SLA",
-      href: "/pricing",
-      icon: Layers,
-      key: "pricing",
-      badge: "SLA",
-    },
-  ];
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
-  const handleLogout = () => {
-    tokens.clear();
-    router.push("/login");
+  const logout = async () => {
+    queryClient.clear();
+    await endSession();
   };
 
-  return (
-    <div className="min-h-screen bg-pitch text-fg antialiased font-sans selection:bg-brand selection:text-white">
-      {/* Ambient background glow orbs */}
-      <div className="fixed top-0 left-1/3 -translate-x-1/2 w-[700px] h-[350px] bg-brand/5 blur-[160px] pointer-events-none -z-10 rounded-full" />
-      <div className="fixed bottom-0 right-10 w-[500px] h-[500px] bg-brand/[0.03] blur-[180px] pointer-events-none -z-10 rounded-full" />
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!query.trim()) return;
+    router.push(`/logs?q=${encodeURIComponent(query.trim())}`);
+  };
 
-      {/* Top Mobile Bar */}
-      <div className="lg:hidden sticky top-0 z-50 flex items-center justify-between px-4 h-16 bg-surface/90 backdrop-blur-xl border-b border-line">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-card border border-white/10 flex items-center justify-center text-brand shadow-[0_0_12px_rgba(254,88,36,0.3)]">
-            <Radio className="w-4 h-4" />
-          </div>
-          <span className="font-display font-bold text-lg tracking-tight text-white">
-            PULSE<span className="text-brand">.</span>
-          </span>
-        </Link>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg bg-card border border-line text-muted hover:text-white"
+  const title = TITLES[pathname] ?? "Console";
+
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center justify-between border-b border-line px-5">
+        <Logo href="/" />
+        <Link
+          href="/"
+          aria-label="Open public site"
+          className="text-faint transition-colors hover:text-ink"
         >
-          {sidebarOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
-        </button>
+          <ArrowUpRight className="size-4" />
+        </Link>
       </div>
 
-      {/* Sidebar Desktop / Mobile Drawer */}
-      <aside
-        className={`fixed top-0 bottom-0 left-0 w-72 bg-surface/95 lg:bg-surface border-r border-line z-50 flex flex-col justify-between p-5 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
-      >
-        <div className="flex flex-col gap-6">
-          {/* Logo & Version */}
-          <div className="flex items-center justify-between pt-1">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-xl bg-card border border-white/10 flex items-center justify-center text-brand group-hover:scale-105 group-hover:border-brand/40 transition-all shadow-[0_0_16px_rgba(254,88,36,0.25)]">
-                <Radio className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-display font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
-                  PULSE
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                </span>
-                <span className="font-mono text-[9px] tracking-widest text-subtle uppercase">
-                  ENGINE V4.19
-                </span>
-              </div>
-            </Link>
-            <Link
-              href="/"
-              title="Return to Public Landing Page"
-              className="text-subtle hover:text-brand transition-colors p-1"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Active Cluster Pill */}
-          <div className="px-3.5 py-2.5 rounded-xl bg-card border border-line flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_#fe5824]" />
-              <span className="font-mono text-xs font-semibold text-fg truncate">
-                cluster-us-east-1
-              </span>
-            </div>
-            <span className="label-caps text-[9px] px-1.5 py-0.5 rounded bg-surface border border-line text-brand">
-              ACTIVE
+      <div className="px-3 py-4">
+        <div className="flex items-center justify-between rounded-lg border border-line bg-surface px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <PulseMark className="size-4 text-accent" />
+            <span className="truncate text-[13px] font-medium">
+              {ENVIRONMENT}
             </span>
           </div>
-
-          {/* Monitoring Status Badge */}
-          <div className="px-1 flex items-center justify-between">
-            <span className="label-caps text-subtle">MONITORING</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-ok animate-ping" />
-              <span className="font-mono text-[10px] font-semibold text-ok">
-                38MS PING
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const isActive =
-                activePath === item.key ||
-                (pathname === item.href && !activePath) ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-brand text-pitch font-bold shadow-[0_4px_20px_-4px_rgba(254,88,36,0.5)]"
-                      : "text-muted hover:bg-card hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`w-4 h-4 shrink-0 ${
-                        isActive ? "text-pitch" : "text-muted"
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                  </div>
-                  <span
-                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                      isActive
-                        ? "bg-black/20 text-pitch font-bold"
-                        : "bg-card text-subtle"
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
+          <span className="font-mono text-[9px] tracking-[0.08em] text-faint uppercase">
+            v{VERSION}
+          </span>
         </div>
+      </div>
 
-        {/* Sidebar Bottom: Fast Dispatch CTA & Operator Info */}
-        <div className="flex flex-col gap-3 pt-4 border-t border-line">
-          <Link
-            href="/composer"
-            className="btn-glow w-full flex items-center justify-center gap-2 py-2.5 bg-brand hover:bg-brand-bright text-pitch font-bold text-xs rounded-xl uppercase tracking-wider transition-all"
-          >
-            <Zap className="w-4 h-4 fill-pitch" />
-            <span>Fast Dispatch</span>
-          </Link>
+      <nav className="flex flex-col gap-0.5 px-3">
+        {NAV.map((item) => {
+          const active =
+            activePath === item.key ||
+            (!activePath && pathname === item.href) ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              onClick={() => setOpen(false)}
+              className={cn(
+                "flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors",
+                active
+                  ? "bg-ink text-white"
+                  : "text-muted hover:bg-surface-2 hover:text-ink",
+              )}
+            >
+              <Icon
+                className={cn(
+                  "size-4 shrink-0",
+                  active ? "text-white" : "text-faint",
+                )}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-line">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-surface border border-brand/30 flex items-center justify-center text-brand shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="font-mono text-xs text-white truncate font-medium">
-                  alex.rivera@corp
-                </span>
-                <span className="font-mono text-[9px] text-subtle uppercase">
-                  OPERATOR SRE
-                </span>
-              </div>
+      <div className="mt-auto space-y-3 p-3">
+        <a
+          href={DOCS_URL}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => setOpen(false)}
+          className="flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <HelpCircle className="size-4 text-faint" />
+          API reference
+          <ArrowUpRight className="ml-auto size-3.5 text-faint" />
+        </a>
+
+        <div className="border-t border-line pt-3">
+          <div className="flex items-center gap-3 px-1 py-1">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono text-[10px] font-medium text-muted">
+              {initials(me.data?.username)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium">
+                {me.data?.username ??
+                  (me.isError ? "Session unavailable" : "Loading…")}
+              </p>
+              <p className="truncate font-mono text-[10px] text-faint">
+                {me.data?.auth === "api_key"
+                  ? "API key"
+                  : me.data?.email && me.data.email !== me.data.username
+                    ? me.data.email
+                    : me.data
+                      ? "JWT session"
+                      : me.isError
+                        ? "Pulse console"
+                        : "Loading…"}
+              </p>
             </div>
             <button
-              onClick={handleLogout}
-              title="Sign Out"
-              className="text-subtle hover:text-err transition-colors p-1"
+              type="button"
+              onClick={logout}
+              title="Sign out"
+              aria-label="Sign out"
+              className="rounded-md p-1.5 text-faint transition-colors hover:bg-surface-2 hover:text-err"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="size-4" />
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-dvh bg-canvas">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-[248px] border-r border-line bg-canvas lg:block">
+        {sidebar}
       </aside>
 
-      {/* Main Content Area */}
-      <div className="lg:pl-72 flex flex-col min-h-screen">
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 h-16 bg-pitch/80 backdrop-blur-xl border-b border-line flex items-center justify-between px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-card border border-line text-xs font-mono">
-              <span className="w-2 h-2 rounded-full bg-ok animate-pulse" />
-              <span className="text-white font-medium text-[11px]">
-                ALL GATEWAYS OPERATIONAL
-              </span>
-            </div>
-            <div className="hidden md:flex items-center gap-1.5 text-subtle font-mono text-[11px]">
-              <Radio className="w-3.5 h-3.5 text-brand" />
-              <span>SYNCED VIA QUIC 0-RTT</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Search Input */}
-            <div className="relative hidden sm:block w-64 lg:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search payloads, events, keys..."
-                className="w-full h-9 pl-9 pr-3 rounded-full bg-card border border-line text-xs text-fg placeholder:text-subtle focus:border-brand focus:outline-none transition-colors"
-              />
-            </div>
-
-            <Link
-              href="/composer"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card hover:bg-card-hover border border-line text-white text-xs font-mono transition-colors"
-            >
-              <Rocket className="w-3.5 h-3.5 text-brand" />
-              <span>Deploy Signal</span>
-            </Link>
-
+      {open && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-ink/30 backdrop-blur-[2px]"
+          />
+          <aside className="absolute inset-y-0 left-0 w-[280px] border-r border-line bg-canvas">
             <button
-              title="Notifications"
-              className="w-9 h-9 rounded-full bg-card border border-line flex items-center justify-center text-muted hover:text-white transition-colors"
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close navigation"
+              className="absolute top-3 right-3 z-10 rounded-md p-2 text-muted hover:bg-surface-2 hover:text-ink"
             >
-              <Bell className="w-4 h-4" />
+              <X className="size-4" />
             </button>
+            {sidebar}
+          </aside>
+        </div>
+      )}
 
-            <Link
-              href="/login"
-              title="Authentication Status"
-              className="w-9 h-9 rounded-full bg-card border border-brand/40 flex items-center justify-center text-brand hover:scale-105 transition-all"
-            >
-              <Shield className="w-4 h-4" />
-            </Link>
+      <div className="lg:pl-[248px]">
+        <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
+          <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                aria-label="Open navigation"
+                className="btn btn-ghost size-10 p-0 lg:hidden"
+              >
+                <Menu className="size-5" />
+              </button>
+              <Logo href="/" className="lg:hidden" />
+              <div className="hidden items-center gap-2 text-[13px] sm:flex">
+                <span className="text-faint">Console</span>
+                <span className="text-line-strong">/</span>
+                <span className="font-medium">{title}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <form
+                onSubmit={submitSearch}
+                className="relative hidden md:block"
+                role="search"
+              >
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-faint" />
+                <input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search deliveries"
+                  aria-label="Search deliveries"
+                  className="input h-9 w-56 rounded-lg pr-12 pl-9 text-[13px] lg:w-64"
+                />
+                <kbd className="kbd pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
+                  /
+                </kbd>
+              </form>
+
+              {pathname !== "/composer" && (
+                <Link
+                  href="/composer"
+                  className="btn btn-primary btn-sm px-3.5"
+                >
+                  <Plus className="size-3.5" />
+                  <span className="hidden sm:inline">New dispatch</span>
+                  <span className="sm:hidden">New</span>
+                </Link>
+              )}
+            </div>
           </div>
         </header>
 
-        {/* Page Content Body */}
-        <main className="flex-1 p-5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="mx-auto w-full max-w-[1320px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-10">
           {children}
         </main>
       </div>

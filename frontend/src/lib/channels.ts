@@ -16,7 +16,7 @@ export const CHANNELS: Record<string, ChannelMeta> = {
     key: "push",
     label: "Push",
     provider: "Firebase FCM",
-    color: "#fe5824",
+    color: "#d94a2b",
     text: "text-push",
     bg: "bg-push/10",
     icon: Bell,
@@ -24,8 +24,8 @@ export const CHANNELS: Record<string, ChannelMeta> = {
   email: {
     key: "email",
     label: "Email",
-    provider: "SMTP Relay",
-    color: "#22d3ee",
+    provider: "SMTP",
+    color: "#3f6f8f",
     text: "text-email",
     bg: "bg-email/10",
     icon: Mail,
@@ -34,7 +34,7 @@ export const CHANNELS: Record<string, ChannelMeta> = {
     key: "sms",
     label: "SMS",
     provider: "Twilio",
-    color: "#a78bfa",
+    color: "#9a6b2f",
     text: "text-sms",
     bg: "bg-sms/10",
     icon: MessageSquareText,
@@ -49,9 +49,9 @@ export function channelMeta(key: string): ChannelMeta {
       key,
       label: key,
       provider: key,
-      color: "#8d929d",
+      color: "#898c84",
       text: "text-muted",
-      bg: "bg-white/5",
+      bg: "bg-surface-2",
       icon: Bell,
     }
   );
@@ -61,7 +61,12 @@ export const STATUS_META: Record<
   NotificationStatus,
   { label: string; text: string; bg: string; dot: string; pulse?: boolean }
 > = {
-  sent: { label: "Delivered", text: "text-ok", bg: "bg-ok/10", dot: "bg-ok" },
+  sent: {
+    label: "Sent",
+    text: "text-ok",
+    bg: "bg-ok/10",
+    dot: "bg-ok",
+  },
   pending: {
     label: "Queued",
     text: "text-warn",
@@ -69,12 +74,24 @@ export const STATUS_META: Record<
     dot: "bg-warn",
     pulse: true,
   },
-  retrying: {
-    label: "Retrying",
-    text: "text-email",
-    bg: "bg-email/10",
-    dot: "bg-email",
+  sending: {
+    label: "Sending",
+    text: "text-accent-ink",
+    bg: "bg-accent-soft",
+    dot: "bg-accent",
     pulse: true,
   },
-  failed: { label: "Failed", text: "text-err", bg: "bg-err/10", dot: "bg-err" },
+  retrying: {
+    label: "Retrying",
+    text: "text-accent-ink",
+    bg: "bg-accent-soft",
+    dot: "bg-accent",
+    pulse: true,
+  },
+  failed: {
+    label: "Failed",
+    text: "text-err",
+    bg: "bg-err/10",
+    dot: "bg-err",
+  },
 };

@@ -2,562 +2,551 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Bell,
+  ArrowUpRight,
   Check,
-  CheckCircle2,
-  DollarSign,
-  Flame,
-  Globe,
-  Layers,
-  Lock,
-  Mail,
-  MessageSquare,
-  Radio,
-  Rocket,
-  Shield,
-  ShieldCheck,
-  Sliders,
-  Sparkles,
-  Zap,
+  ChevronDown,
+  Gauge,
 } from "lucide-react";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { fmtCompact } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+const DOCS_URL = process.env.NEXT_PUBLIC_API_DOCS_URL || "/api/docs/";
+
+const tiers = [
+  {
+    name: "Starter",
+    description: "For prototypes, side projects and the first production send.",
+    monthly: 0,
+    annual: 0,
+    volume: "10,000 sends / month",
+    cta: "Open the console",
+    href: "/login",
+    features: [
+      "Email, SMS and push",
+      "10,000 accepted sends (illustrative)",
+      "Idempotency and priority queues",
+      "Per-message traces",
+      "Self-hosted deployment",
+    ],
+  },
+  {
+    name: "Scale",
+    description: "For teams shipping to real audiences, every day.",
+    monthly: 499,
+    annual: 399,
+    volume: "2,000,000 sends / month",
+    cta: "Open the console",
+    href: "/login",
+    featured: true,
+    features: [
+      "Everything in Starter",
+      "Email, SMS and push",
+      "Priority queues",
+      "Retries with exponential backoff",
+      "Per-message provider traces",
+      "Self-hosted deployment",
+    ],
+  },
+  {
+    name: "Enterprise",
+    description: "For high-volume or self-hosted operations.",
+    monthly: null,
+    annual: null,
+    volume: "Custom volume",
+    cta: "Read the API docs",
+    href: "/api/docs/",
+    features: [
+      "Everything in Scale",
+      "Self-hosted deployment",
+      "Environment-managed providers",
+      "Configurable retention",
+      "Operator console and API access",
+    ],
+  },
+];
+
+const included = [
+  ["One API", "Email, SMS and push behind the same request shape."],
+  [
+    "Retries included",
+    "A retry stays on the same send record; it is not a new accepted send.",
+  ],
+  [
+    "Per-message traces",
+    "Every accepted send keeps its latest provider response or error and attempt count.",
+  ],
+  [
+    "No channel premium",
+    "The illustrative pricing model is based on accepted sends, not destination.",
+  ],
+];
+
+const faqs = [
+  {
+    question: "What counts as a send?",
+    answer:
+      "A send is counted when the API accepts a valid request and puts it on the queue. Retries and failed provider attempts do not create another accepted send.",
+  },
+  {
+    question: "What happens when I pass the included volume?",
+    answer:
+      "The illustrative estimate adds $0.06 per 1,000 additional accepted sends. This deployment does not include billing, enforce a hard cap or generate invoices; final terms would be agreed in a contract.",
+  },
+  {
+    question: "Can I bring my own provider?",
+    answer:
+      "This deployment reads SMTP, Twilio and FCM credentials from operator-managed environment variables. Per-tenant provider attachment is not implemented.",
+  },
+  {
+    question: "Is there a free sandbox?",
+    answer:
+      "There is no billing or metering in this deployment. Sending is limited by the configured API rate limits and by the provider credentials you supply.",
+  },
+];
 
 export default function PricingPage() {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "monthly",
-  );
-  const [volumeSlider, setVolumeSlider] = useState(5_000_000);
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [volume, setVolume] = useState(5_000_000);
 
-  // Dynamic cost calculation based on slider
-  const baseMonthly = Math.round(
-    499 + ((volumeSlider - 2_000_000) / 1000) * 0.12,
-  );
-  const displayCost =
-    volumeSlider <= 10_000 ? 0 : volumeSlider <= 2_000_000 ? 499 : baseMonthly;
-  const finalCost =
-    billingCycle === "annual" ? Math.round(displayCost * 0.8) : displayCost;
+  const includedVolume = 2_000_000;
+  const isStarter = volume <= 10_000;
+  const base = isStarter ? 0 : billing === "annual" ? 399 : 499;
+  const overage = isStarter ? 0 : Math.max(0, volume - includedVolume);
+  const overageCost = Math.round((overage / 1_000) * 0.06);
+  const estimate = base + overageCost;
+  const breakdown: [string, string][] = [
+    ["Base plan", money.format(base)],
+    ["Included volume", isStarter ? "10,000" : "2,000,000"],
+    ["Additional sends", overage > 0 ? fmtCompact(overage) : "None"],
+    ["Overage", overageCost > 0 ? money.format(overageCost) : "None"],
+    ["Retries", "Included"],
+  ];
+  const sliderPercent = ((volume - 10_000) / (20_000_000 - 10_000)) * 100;
 
   return (
-    <div className="min-h-screen bg-pitch text-fg font-sans selection:bg-brand selection:text-white overflow-x-hidden">
-      {/* Background Lighting Orbs */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-brand/[0.08] blur-[180px] pointer-events-none -z-10 rounded-full" />
-      <div className="fixed bottom-0 right-0 w-[500px] h-[500px] bg-brand/[0.03] blur-[180px] pointer-events-none -z-10 rounded-full" />
+    <div className="min-h-dvh bg-canvas">
+      <SiteHeader />
 
-      {/* Header Bar */}
-      <header className="sticky top-0 z-50 w-full bg-pitch/85 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-card border border-white/10 flex items-center justify-center text-brand shadow-[0_0_15px_rgba(254,88,36,0.2)]">
-              <Radio className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-display font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-                PULSE
-                <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-              </span>
-              <span className="font-mono text-[9px] tracking-widest text-subtle uppercase -mt-0.5">
-                SLA Tier Plans
-              </span>
-            </div>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-1 bg-card/90 border border-white/10 px-4 py-1.5 rounded-full text-xs font-medium">
-            <Link
-              href="/"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Overview
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Console
-            </Link>
-            <Link
-              href="/composer"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Composer
-            </Link>
-            <Link
-              href="/gateways"
-              className="px-3 py-1.5 rounded-full text-muted hover:text-white transition-colors"
-            >
-              Gateways
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex items-center gap-1 px-4 py-2 rounded-full border border-line text-xs font-medium text-muted hover:text-white transition-all"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/composer"
-              className="btn-glow inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider transition-all"
-            >
-              <span>Deploy Signal</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-20 flex flex-col gap-20">
-        {/* Title Area */}
-        <div className="text-center max-w-4xl mx-auto flex flex-col items-center">
-          <span className="label-caps text-brand">
-            INCOMING SPECIFICATIONS &amp; DISPATCH RATES
-          </span>
-          <h1 className="font-display font-extrabold text-4xl sm:text-6xl text-white tracking-tight mt-4 leading-tight">
-            Predictable scale. Sub-50ms latency.{" "}
-            <span className="text-brand drop-shadow-[0_0_35px_rgba(254,88,36,0.6)]">
-              Zero dropped packets.
-            </span>
-          </h1>
-          <p className="text-muted text-base sm:text-lg mt-5 max-w-2xl leading-relaxed">
-            Transparent usage-based pricing with automated carrier SLAs,
-            automated cross-load failover, and dedicated voice / bearer channels
-            built for mission-critical dispatch.
-          </p>
-
-          {/* Billing Switcher Toggle */}
-          <div className="mt-10 flex items-center p-1.5 rounded-full bg-card border border-line text-xs font-mono">
-            <button
-              onClick={() => setBillingCycle("monthly")}
-              className={`px-5 py-2 rounded-full transition-all ${
-                billingCycle === "monthly"
-                  ? "bg-surface border border-line text-white font-bold shadow-sm"
-                  : "text-muted hover:text-white"
-              }`}
-            >
-              Monthly Billing
-            </button>
-            <button
-              onClick={() => setBillingCycle("annual")}
-              className={`px-5 py-2 rounded-full flex items-center gap-1.5 transition-all ${
-                billingCycle === "annual"
-                  ? "bg-brand text-pitch font-bold shadow-[0_0_15px_rgba(254,88,36,0.3)]"
-                  : "text-muted hover:text-white"
-              }`}
-            >
-              <span>Annual Allocation</span>
-              <span className="label-caps text-[9px] px-1.5 py-0.5 rounded bg-pitch text-brand font-bold">
-                20% OFF
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* 3 Core Tier Cards */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-          {/* 01 // DEVELOPER SANDBOX */}
-          <div className="ph-card p-8 rounded-3xl flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-line pb-4 mb-6">
-                <span className="label-caps text-subtle">
-                  01 // EVALUATION TIER
-                </span>
-                <span className="label-caps text-muted">DEV-READY</span>
+      <main>
+        {/* Hero */}
+        <section className="border-b border-line">
+          <div className="mx-auto grid w-full max-w-[1280px] gap-10 px-5 pt-16 pb-14 sm:px-8 sm:pt-24 sm:pb-20 lg:grid-cols-12 lg:gap-16">
+            <div className="lg:col-span-7">
+              <p className="eyebrow">Pricing</p>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 font-mono text-[10px] tracking-[0.08em] text-muted uppercase">
+                <span className="dot bg-warn" />
+                Illustrative plans
               </div>
-              <h3 className="font-display font-bold text-2xl text-white">
-                Developer Sandbox
-              </h3>
-              <p className="text-muted text-xs mt-2 leading-relaxed">
-                For engineers and teams building, validating, and testing
-                mission-critical dispatch architecture.
+              <h1 className="mt-5 max-w-[12ch] font-display text-[clamp(2.8rem,6vw,5rem)] leading-[0.95] font-semibold tracking-[-0.05em]">
+                Pay for what you send.
+              </h1>
+              <p className="mt-6 max-w-[50ch] text-[16px] leading-relaxed text-muted">
+                The proposed model has no per-channel premiums and no charge for
+                retries. This deployment has no billing integration, so every
+                price and estimate below is illustrative.
               </p>
-
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="font-display font-extrabold text-5xl text-white">
-                  $0
-                </span>
-                <span className="font-mono text-xs text-muted">/ forever</span>
-              </div>
-
-              <ul className="mt-8 space-y-3 font-mono text-xs text-fg/90">
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>10,000 Dispatches / month</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>3 Core Channels (APNs, FCM, SES)</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Shared cluster egress topology</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Sub-200ms telemetry logs &amp; tracing</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Global Community Discord support</span>
-                </li>
-              </ul>
             </div>
 
-            <Link
-              href="/composer"
-              className="mt-10 w-full py-3 rounded-xl bg-surface hover:bg-card border border-line text-xs font-mono text-white text-center font-semibold transition-colors"
-            >
-              Start Developing Free &rarr;
-            </Link>
-          </div>
-
-          {/* 02 // PRODUCTION SCALE (Glowing Orange Feature Card) */}
-          <div className="relative ph-card p-8 rounded-3xl border-brand/60 shadow-[0_0_50px_rgba(254,88,36,0.2)] flex flex-col justify-between">
-            {/* Top Recommended Tag */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-brand text-pitch font-mono font-bold text-[10px] uppercase tracking-wider shadow-lg">
-              Most Popular For Production Teams
+            <div className="lg:col-span-5 lg:pt-8">
+              <div className="border-t border-line pt-5">
+                <p className="label">All plans include</p>
+                <ul className="mt-4 space-y-3">
+                  {[
+                    "A single API for email, SMS and push",
+                    "Idempotency and automatic retries",
+                    "A trace for every accepted send",
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-2.5 text-[13px] text-muted"
+                    >
+                      <Check className="mt-0.5 size-3.5 shrink-0 text-accent" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-
-            <div>
-              <div className="flex items-center justify-between border-b border-line pb-4 mb-6">
-                <span className="label-caps text-brand">
-                  02 // ENTERPRISE CORE
-                </span>
-                <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-              </div>
-              <h3 className="font-display font-bold text-2xl text-white">
-                Production Scale
-              </h3>
-              <p className="text-muted text-xs mt-2 leading-relaxed">
-                Zero-loss delivery, automated carrier failover, and
-                high-frequency edge rate limit buffers.
-              </p>
-
-              <div className="mt-6 flex items-baseline gap-1.5">
-                <span className="font-display font-extrabold text-5xl text-white">
-                  ${billingCycle === "annual" ? "399" : "499"}
-                </span>
-                <span className="font-mono text-xs text-muted">/ month</span>
-              </div>
-              <span className="font-mono text-[10px] text-subtle block mt-1">
-                + $0.12 per 1,000 dispatches beyond quota
-              </span>
-
-              <ul className="mt-8 space-y-3 font-mono text-xs text-fg/90">
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span className="font-semibold text-white">
-                    2,000,000 Dispatches included / month
-                  </span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>All 5 Channels (incl. Tier-1 SMPP Direct)</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>High-speed deterministic routing redundancy</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span className="text-brand font-bold">
-                    25,000 msg/sec peak guaranteed throughput
-                  </span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Live unmanaged failbacks across carriers</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>24/7 dedicated escalation engineering</span>
-                </li>
-              </ul>
-            </div>
-
-            <Link
-              href="/composer"
-              className="btn-glow mt-10 w-full py-3.5 rounded-xl bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-[0_0_24px_rgba(254,88,36,0.4)]"
-            >
-              <span>Deploy Production Cluster</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* 03 // HYPERSCALE ENTERPRISE */}
-          <div className="ph-card p-8 rounded-3xl flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-line pb-4 mb-6">
-                <span className="label-caps text-subtle">
-                  03 // DEDICATED MESH
-                </span>
-                <span className="label-caps text-ok">SLA 99.999%</span>
-              </div>
-              <h3 className="font-display font-bold text-2xl text-white">
-                Hyperscale Enterprise
-              </h3>
-              <p className="text-muted text-xs mt-2 leading-relaxed">
-                For Tier-1 financial institutions, defense networks, and
-                high-frequency scale architectures.
-              </p>
-
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="font-display font-extrabold text-4xl text-white">
-                  Custom
-                </span>
-                <span className="font-mono text-xs text-muted">
-                  Tailored SLA
-                </span>
-              </div>
-
-              <ul className="mt-8 space-y-3 font-mono text-xs text-fg/90">
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Unlimited unthrottled throughput</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Multi-cloud cluster isolate deployment</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Custom BGP peering &amp; Direct SMPP trunks</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>
-                    On-premise HSM key store &amp; zero-knowledge relays
-                  </span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-brand shrink-0" />
-                  <span>Dedicated Principal Solutions Architect</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() =>
-                alert(
-                  "Enterprise Architecture Briefing requested. Our solutions team will reach out.",
-                )
-              }
-              className="mt-10 w-full py-3 rounded-xl bg-surface hover:bg-card border border-line text-xs font-mono text-white text-center font-semibold transition-colors"
-            >
-              Request Architecture Briefing &rarr;
-            </button>
           </div>
         </section>
 
-        {/* 4. Interactive Dispatch Trajectory Calculator ("Dial your dispatch trajectory") */}
-        <section className="ph-card p-8 sm:p-12 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left Slider Form */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
+        {/* Plans */}
+        <section className="border-b border-line">
+          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 sm:px-8 sm:py-20">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <span className="label-caps text-brand">
-                  LIVE BUDGET // VOLUME ESTIMATOR
-                </span>
-                <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mt-1">
-                  Dial your dispatch trajectory.
-                </h3>
-                <p className="text-muted text-xs mt-2">
-                  Tailor your projected packet volume per edge. Pricing scales
-                  linearly based on the exact throughput your nodes demand.
+                <h2 className="font-display text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                  Choose a plan
+                </h2>
+                <p className="mt-2 text-[13px] text-muted">
+                  Plans are illustrative; no checkout or billing is connected.
                 </p>
               </div>
 
-              {/* Slider Component */}
-              <div className="flex flex-col gap-3 font-mono">
-                <div className="flex items-center justify-between">
-                  <span className="text-subtle text-xs">
-                    Monthly Egress Volume
-                  </span>
-                  <span className="text-brand font-bold text-xl">
-                    {volumeSlider.toLocaleString()}{" "}
-                    <span className="text-xs text-muted font-normal">pkts</span>
-                  </span>
+              <div className="inline-flex self-start rounded-lg border border-line bg-surface p-0.5 sm:self-auto">
+                {(["monthly", "annual"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={billing === option}
+                    onClick={() => setBilling(option)}
+                    className={cn(
+                      "h-9 rounded-md px-3.5 text-[12px] font-medium capitalize transition-colors",
+                      billing === option
+                        ? "bg-ink text-white"
+                        : "text-muted hover:text-ink",
+                    )}
+                  >
+                    {option}
+                    {option === "annual" && (
+                      <span
+                        className={cn(
+                          "ml-1.5 font-mono text-[9px]",
+                          billing === option
+                            ? "text-white/60"
+                            : "text-accent-ink",
+                        )}
+                      >
+                        −20%
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-xl border border-warn/25 bg-warn/[0.04] px-4 py-3 text-[11px] leading-relaxed text-muted">
+              These are illustrative plans, not an offer. This deployment does
+              not include billing, metering or a checkout flow.
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {tiers.map((tier) => {
+                const price =
+                  tier.monthly === null
+                    ? null
+                    : billing === "annual"
+                      ? tier.annual
+                      : tier.monthly;
+                return (
+                  <div
+                    key={tier.name}
+                    className={cn(
+                      "relative flex flex-col rounded-2xl border p-6 sm:p-7",
+                      tier.featured
+                        ? "border-ink bg-ink text-white"
+                        : "border-line bg-surface",
+                    )}
+                  >
+                    {tier.featured && (
+                      <span className="absolute -top-2.5 left-6 rounded-full border border-accent-ink bg-accent-ink px-2.5 py-0.5 font-mono text-[9px] tracking-[0.08em] text-white uppercase">
+                        Recommended
+                      </span>
+                    )}
+
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3
+                        className={cn(
+                          "font-display text-xl font-semibold tracking-[-0.03em]",
+                          tier.featured ? "text-white" : "text-ink",
+                        )}
+                      >
+                        {tier.name}
+                      </h3>
+                      <span
+                        className={cn(
+                          "font-mono text-[9px] tracking-[0.08em] uppercase",
+                          tier.featured ? "text-white/60" : "text-faint",
+                        )}
+                      >
+                        {tier.volume}
+                      </span>
+                    </div>
+
+                    <p
+                      className={cn(
+                        "mt-2 min-h-10 max-w-[32ch] text-[12px] leading-relaxed",
+                        tier.featured ? "text-white/70" : "text-muted",
+                      )}
+                    >
+                      {tier.description}
+                    </p>
+
+                    <div className="mt-7 flex items-end gap-1.5">
+                      {price === null ? (
+                        <span className="font-display text-[2.6rem] leading-none font-semibold tracking-[-0.05em]">
+                          Custom
+                        </span>
+                      ) : (
+                        <>
+                          <span className="font-display text-[2.8rem] leading-none font-semibold tracking-[-0.055em]">
+                            {money.format(price)}
+                          </span>
+                          <span
+                            className={cn(
+                              "pb-1 text-[11px]",
+                              tier.featured ? "text-white/65" : "text-faint",
+                            )}
+                          >
+                            / month
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p
+                      className={cn(
+                        "mt-2 text-[10px]",
+                        tier.featured ? "text-white/55" : "text-faint",
+                      )}
+                    >
+                      {price === null
+                        ? "Illustrative · volume based"
+                        : price === 0
+                          ? "Illustrative free tier · no billing connected"
+                          : billing === "annual"
+                            ? "Illustrative monthly rate with annual billing · no invoice generated"
+                            : "Illustrative monthly rate · no invoice generated"}
+                    </p>
+
+                    <Link
+                      href={tier.href}
+                      className={cn(
+                        "btn mt-6 w-full",
+                        tier.featured
+                          ? "bg-white text-ink hover:bg-white/90"
+                          : "btn-secondary",
+                      )}
+                    >
+                      {tier.cta}
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+
+                    <ul
+                      className={cn(
+                        "mt-7 space-y-2.5 border-t pt-6",
+                        tier.featured ? "border-white/10" : "border-line",
+                      )}
+                    >
+                      {tier.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className={cn(
+                            "flex items-start gap-2.5 text-[12px] leading-relaxed",
+                            tier.featured ? "text-white/75" : "text-muted",
+                          )}
+                        >
+                          <Check
+                            className={cn(
+                              "mt-0.5 size-3.5 shrink-0",
+                              tier.featured ? "text-accent" : "text-accent",
+                            )}
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Volume calculator */}
+        <section className="border-b border-line">
+          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 sm:px-8 sm:py-20">
+            <div className="grid gap-8 lg:grid-cols-12 lg:gap-16">
+              <div className="lg:col-span-5">
+                <p className="eyebrow">Estimate</p>
+                <h2 className="mt-4 max-w-[12ch] font-display text-3xl leading-[0.98] font-semibold tracking-[-0.04em] sm:text-4xl">
+                  Price at your volume.
+                </h2>
+                <p className="mt-4 max-w-[42ch] text-[13px] leading-relaxed text-muted">
+                  Move the slider to see the illustrative Scale pricing at your
+                  monthly accepted-send volume. Retries stay on the same record.
+                </p>
+                <div className="mt-8 flex items-center gap-2 font-mono text-[10px] text-faint">
+                  <Gauge className="size-3.5" />
+                  Estimate based on accepted sends
                 </div>
+              </div>
+
+              <div className="panel p-5 sm:p-7 lg:col-span-7">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="label">Monthly volume</p>
+                    <p className="mt-2 font-display text-4xl font-semibold tracking-[-0.04em]">
+                      {fmtCompact(volume)}
+                      <span className="ml-1 text-[13px] font-medium tracking-normal text-faint">
+                        sends
+                      </span>
+                    </p>
+                  </div>
+                  <p className="font-mono text-[10px] text-faint">
+                    {billing === "annual"
+                      ? "Annual billing · monthly estimate"
+                      : "Monthly estimate"}
+                  </p>
+                </div>
+
                 <input
                   type="range"
-                  min={100_000}
-                  max={25_000_000}
-                  step={100_000}
-                  value={volumeSlider}
-                  onChange={(e) => setVolumeSlider(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg bg-surface accent-brand cursor-pointer"
+                  min={10_000}
+                  max={20_000_000}
+                  step={10_000}
+                  value={volume}
+                  onChange={(event) => setVolume(Number(event.target.value))}
+                  aria-label="Monthly send volume"
+                  className="range mt-6"
+                  style={{
+                    background: `linear-gradient(to right, var(--color-ink) ${sliderPercent}%, var(--color-line) ${sliderPercent}%)`,
+                  }}
                 />
-                <div className="flex justify-between text-[10px] text-subtle">
-                  <span>100K (Hobbyist)</span>
-                  <span>5M (Growth)</span>
-                  <span>25M+ (High-Scale)</span>
+                <div className="mt-2 flex justify-between font-mono text-[9px] text-faint">
+                  <span>10K</span>
+                  <span>20M</span>
                 </div>
-              </div>
 
-              {/* Channels Distribution Estimate */}
-              <div className="grid grid-cols-3 gap-3 font-mono text-xs pt-4 border-t border-line">
-                <div className="p-3 rounded-xl bg-surface border border-line">
-                  <span className="text-subtle label-caps block">
-                    PUSH (60%)
-                  </span>
-                  <span className="text-white font-bold text-sm">
-                    {Math.round((volumeSlider * 0.6) / 1000)}k
-                  </span>
+                <div className="mt-7 grid gap-6 border-t border-line pt-6 sm:grid-cols-2">
+                  <div>
+                    <p className="label">Estimated monthly</p>
+                    <p className="mt-2 font-display text-[2.6rem] leading-none font-semibold tracking-[-0.05em]">
+                      {money.format(estimate)}
+                    </p>
+                    <p className="mt-2 text-[11px] text-muted">
+                      {billing === "annual"
+                        ? "Illustrative monthly rate with annual billing. No invoice is generated."
+                        : "Illustrative monthly rate. No invoice is generated."}
+                    </p>
+                    <p className="mt-1 text-[10px] text-faint">
+                      Illustrative Starter cap: 10,000 sends.
+                    </p>
+                  </div>
+                  <div className="space-y-2.5 sm:border-l sm:border-line sm:pl-6">
+                    {breakdown.map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between gap-4 text-[11px]"
+                      >
+                        <span className="text-muted">{label}</span>
+                        <span className="font-mono text-ink">{value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl bg-surface border border-line">
-                  <span className="text-subtle label-caps block">
-                    EMAIL (30%)
-                  </span>
-                  <span className="text-cyan-400 font-bold text-sm">
-                    {Math.round((volumeSlider * 0.3) / 1000)}k
-                  </span>
-                </div>
-                <div className="p-3 rounded-xl bg-surface border border-line">
-                  <span className="text-subtle label-caps block">
-                    SMS (10%)
-                  </span>
-                  <span className="text-purple-400 font-bold text-sm">
-                    {Math.round((volumeSlider * 0.1) / 1000)}k
-                  </span>
+
+                <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="max-w-[38ch] text-[10px] leading-relaxed text-faint">
+                    Estimate only. This deployment generates no quote, invoice
+                    or contract; rate limits are the real constraint.
+                  </p>
+                  <a
+                    href={DOCS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-secondary btn-sm shrink-0"
+                  >
+                    Read API limits
+                    <ArrowUpRight className="size-3" />
+                  </a>
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Right Projected Cost Box */}
-            <div className="lg:col-span-5 p-8 rounded-2xl bg-pitch/90 border border-brand/40 shadow-[0_0_30px_rgba(254,88,36,0.15)] flex flex-col justify-between">
-              <div>
-                <span className="label-caps text-subtle">
-                  ESTIMATED RUN-RATE
-                </span>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="font-display font-extrabold text-5xl text-white">
-                    ${finalCost.toLocaleString()}
-                  </span>
-                  <span className="font-mono text-xs text-muted">
-                    / billing cycle
-                  </span>
-                </div>
-                <p className="font-mono text-[11px] text-subtle mt-1">
-                  Guaranteed zero hidden carrier surcharges or packet drop
-                  penalties.
-                </p>
-
-                <div className="mt-6 pt-4 border-t border-line space-y-2 font-mono text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted">Routing Topology:</span>
-                    <span className="text-white font-bold">
-                      12 Global Edge Nodes
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Target Transit Latency:</span>
-                    <span className="text-ok font-bold">&lt; 34ms E2E</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Dedicated Support:</span>
-                    <span className="text-brand font-bold">Included</span>
-                  </div>
-                </div>
-              </div>
-
-              <Link
-                href="/composer"
-                className="btn-glow mt-8 w-full py-3.5 rounded-xl bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(254,88,36,0.35)]"
+        {/* Included */}
+        <section className="border-b border-line bg-surface/45">
+          <div className="mx-auto grid w-full max-w-[1280px] divide-y divide-line px-5 sm:px-8 md:grid-cols-4 md:divide-x md:divide-y-0">
+            {included.map(([title, copy]) => (
+              <div
+                key={title}
+                className="py-6 md:px-6 md:py-7 md:first:pl-0 md:last:pr-0"
               >
-                <span>Deploy with This Volume</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+                <div className="flex items-center gap-2">
+                  <Check className="size-3.5 text-accent" />
+                  <p className="text-[12px] font-medium">{title}</p>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                  {copy}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="border-b border-line">
+          <div className="mx-auto grid w-full max-w-[1280px] gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-12 lg:gap-16">
+            <div className="lg:col-span-4">
+              <p className="eyebrow">Questions</p>
+              <h2 className="mt-4 max-w-[10ch] font-display text-3xl leading-[0.98] font-semibold tracking-[-0.04em] sm:text-4xl">
+                Before you choose.
+              </h2>
+              <p className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-muted">
+                A few things worth knowing before you evaluate the plans.
+              </p>
+            </div>
+
+            <div className="divide-y divide-line border-t border-line lg:col-span-8">
+              {faqs.map((faq) => (
+                <details key={faq.question} className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5">
+                    <span className="text-[13px] font-medium">
+                      {faq.question}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="max-w-[64ch] pb-5 text-[12px] leading-relaxed text-muted">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* 5. Architected for Uptime (Financial Penalty Backed) */}
-        <section className="flex flex-col gap-6">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="label-caps text-brand">CONTRACTUAL GUARANTEE</span>
-            <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mt-2">
-              Architected for uptime, backed by financial penalties.
-            </h2>
-            <p className="text-muted text-sm mt-3">
-              We credit your account automatically if our telemetry SLA metrics
-              drop below contractual thresholds.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-6 rounded-2xl bg-card border border-line">
-              <span className="label-caps text-brand">99.99% UPTIME</span>
-              <h4 className="font-display font-bold text-lg text-white mt-1">
-                Uptime Guarantee
-              </h4>
-              <p className="text-muted text-xs mt-2">
-                Automatic tiered credits issued on any minute of degraded
-                transit across major carriers.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-card border border-line">
-              <span className="label-caps text-cyan-400">SUB-50MS TRANSIT</span>
-              <h4 className="font-display font-bold text-lg text-white mt-1">
-                Latency Bounds
-              </h4>
-              <p className="text-muted text-xs mt-2">
-                Direct edge peering guarantees packet ingestion to egress
-                handoff under 50ms globally.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-card border border-line">
-              <span className="label-caps text-purple-400">
-                CRYPTOGRAPHIC PROOF
-              </span>
-              <h4 className="font-display font-bold text-lg text-white mt-1">
-                Audit Traceability
-              </h4>
-              <p className="text-muted text-xs mt-2">
-                Every dispatch packet receives a tamper-free HMAC-SHA256
-                signature recorded in telemetry logs.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-card border border-line">
-              <span className="label-caps text-ok">CARRIER FAILOVER</span>
-              <h4 className="font-display font-bold text-lg text-white mt-1">
-                Auto-Healing Mesh
-              </h4>
-              <p className="text-muted text-xs mt-2">
-                Dynamic circuit breakers shift egress traffic if a carrier
-                network experiences latency surges.
-              </p>
+        {/* CTA */}
+        <section className="mx-auto w-full max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
+          <div className="ink-panel relative overflow-hidden px-6 py-12 sm:px-12 sm:py-14">
+            <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.12em] text-white/60 uppercase">
+                  Actual limits
+                </p>
+                <h2 className="mt-3 max-w-[18ch] font-display text-3xl leading-[0.98] font-semibold tracking-[-0.045em] text-white sm:text-4xl">
+                  No billing. No hard cap.
+                </h2>
+                <p className="mt-3 max-w-[46ch] text-[13px] leading-relaxed text-white/70">
+                  This repository has no checkout, metering or quota system. API
+                  rate limits and your provider quotas are the real constraints.
+                </p>
+              </div>
+              <a
+                href={DOCS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="btn h-11 shrink-0 bg-white px-5 text-ink hover:bg-white/90"
+              >
+                Read API limits
+                <ArrowUpRight className="size-4" />
+              </a>
             </div>
           </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="ph-card p-10 sm:p-14 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
-          <div>
-            <span className="label-caps text-brand">
-              CUSTOM INFRASTRUCTURE INQUIRIES
-            </span>
-            <h3 className="font-display font-bold text-3xl sm:text-4xl text-white mt-2">
-              Need custom throughput benchmarks?
-            </h3>
-            <p className="text-muted text-sm mt-2">
-              Our site reliability engineering team will test and model your
-              dispatch profile across global carriers.
-            </p>
-          </div>
-          <Link
-            href="/composer"
-            className="btn-glow px-8 py-4 rounded-full bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider flex items-center gap-2 shrink-0 transition-all shadow-[0_0_24px_rgba(254,88,36,0.4)]"
-          >
-            <span>Launch Live Test</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

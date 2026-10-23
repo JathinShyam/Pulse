@@ -1,7 +1,9 @@
 import uuid
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 
@@ -31,14 +33,20 @@ class NotificationTemplate(models.Model):
 class NotificationLog(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
+        ("sending", "Sending"),
         ("sent", "Sent"),
         ("failed", "Failed"),
         ("retrying", "Retrying"),
     ]
-    TERMINAL_STATUSES = ("sent",)
+    # A failed delivery will not be retried automatically, so both states are
+    # terminal. Late/duplicate Celery deliveries must not overwrite either.
+    TERMINAL_STATUSES = ("sent", "failed")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.CharField(max_length=100)
+    # Which credential created the row: "api-key:<fingerprint>" or "user:<id>".
+    # Used to scope reads so one API key cannot inspect another tenant's traffic.
+    created_by = models.CharField(max_length=64, blank=True, default="", db_index=True)
     # PROTECT: deleting a template must not silently wipe its delivery history.
     template = models.ForeignKey(NotificationTemplate, on_delete=models.PROTECT)
     channel = models.CharField(max_length=20)
@@ -47,6 +55,9 @@ class NotificationLog(models.Model):
     idempotency_key = models.CharField(
         max_length=255, unique=True, null=True, blank=True
     )
+    # Hash of the canonical request body for idempotency comparison. Avoids
+    # treating a key reuse with changed subject/body/context as the same send.
+    request_fingerprint = models.CharField(max_length=64, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     attempts = models.PositiveIntegerField(default=0)
     max_retries = models.PositiveIntegerField(default=5)
@@ -96,9 +107,10 @@ class NotificationLog(models.Model):
         """
         Concurrency-safe status transition.
 
-        A notification that is already 'sent' is terminal and is never moved
-        back to another state (protects against duplicate/late task executions
-        under Celery's at-least-once delivery). Returns True if a row changed.
+        A notification that is already terminal ('sent' or 'failed') is never
+        moved back to another state (protects against duplicate/late task
+        executions under Celery's at-least-once delivery). Returns True if a
+        row changed.
         """
         update_kwargs = {"status": status, **extra}
         if count_attempt:
@@ -110,6 +122,41 @@ class NotificationLog(models.Model):
             .objects.filter(id=self.id)
             .exclude(status__in=self.TERMINAL_STATUSES)
             .update(**update_kwargs)
+        )
+        self.refresh_from_db()
+        return bool(updated)
+
+    def claim_for_delivery(self) -> bool:
+        """
+        Atomically move this row into "sending" and increment its attempt count.
+
+        Only one worker can win the claim. A row left in "sending" by a crashed
+        worker becomes claimable again after NOTIFICATION_CLAIM_TIMEOUT_SECONDS.
+        Rows whose retry is still scheduled in the future are not claimable, so
+        a redelivered original task cannot jump the backoff.
+        """
+        now = timezone.now()
+        stale_before = now - timedelta(
+            seconds=settings.NOTIFICATION_CLAIM_TIMEOUT_SECONDS
+        )
+        claimable = Q(status__in=["pending", "retrying"]) & (
+            Q(next_retry_at__isnull=True) | Q(next_retry_at__lte=now)
+        )
+        abandoned = Q(status="sending") & (
+            Q(last_attempt_at__isnull=True) | Q(last_attempt_at__lt=stale_before)
+        )
+
+        updated = (
+            type(self)
+            .objects.filter(id=self.id)
+            .filter(claimable | abandoned)
+            .filter(attempts__lt=models.F("max_retries"))
+            .update(
+                status="sending",
+                attempts=models.F("attempts") + 1,
+                last_attempt_at=now,
+                next_retry_at=None,
+            )
         )
         self.refresh_from_db()
         return bool(updated)

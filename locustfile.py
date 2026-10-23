@@ -5,12 +5,7 @@ This script simulates users sending notifications through the Pulse API
 to stress test the system and measure throughput, latency, and reliability.
 
 Usage:
-    # Via Docker Compose
-    docker-compose up -d locust
-    # Open http://localhost:8089
-
-    # Locally
-    locust -f locustfile.py --host http://localhost:8000
+    PULSE_API_KEY=<key> locust -f locustfile.py --host http://localhost:8000
 
 Target: 10K-15K successful requests/min with <1% failure rate
 
@@ -21,10 +16,19 @@ Load Test Scenarios:
 4. list_notifications - List recent notifications (weighted 1)
 """
 
+import os
 import random
 import uuid
 
 from locust import HttpUser, between, task
+
+
+def _api_key() -> str:
+    """Load the same key an API client would use; never hardcode it here."""
+    explicit = os.environ.get("PULSE_API_KEY", "").strip()
+    if explicit:
+        return explicit
+    return os.environ.get("PULSE_API_KEYS", "").split(",")[0].strip()
 
 
 class PulseNotificationUser(HttpUser):
@@ -45,29 +49,28 @@ class PulseNotificationUser(HttpUser):
     # Test data
     CHANNELS = ["email", "sms", "push"]
 
-    # Templates - should exist in your database
-    STANDARD_TEMPLATES = [
-        "welcome_email",
-        "order_confirmation",
-        "newsletter",
-        "password_reset",
-        "account_update",
-    ]
-
-    OTP_TEMPLATES = [
-        "otp_verification",
-        "otp_sms",
-        "login_otp",
-    ]
+    # Seed these channel-specific template names before running the harness.
+    STANDARD_TEMPLATES = {
+        "email": ["welcome_email", "invoice_ready", "weekly_digest"],
+        "sms": ["otp_login"],
+        "push": ["security_alert", "incident_opened"],
+    }
+    OTP_TEMPLATE = "otp_login"
 
     # Sample recipients
     EMAIL_DOMAINS = ["example.com", "test.com", "loadtest.dev", "pulse.test"]
     PHONE_PREFIXES = ["+1555", "+1666", "+1777", "+1888"]
 
     def on_start(self):
-        """Initialize user session."""
+        """Initialize user session and authenticate with a client API key."""
         self.user_id = f"load_user_{uuid.uuid4().hex[:8]}"
         self.sent_notification_ids = []
+        key = _api_key()
+        if not key:
+            raise RuntimeError(
+                "Set PULSE_API_KEY (or PULSE_API_KEYS) before running Locust."
+            )
+        self.client.headers.update({"X-API-Key": key})
 
     def _generate_email(self) -> str:
         """Generate random test email."""
@@ -95,7 +98,7 @@ class PulseNotificationUser(HttpUser):
         Weight: 10 - highest frequency task
         """
         channel = random.choice(self.CHANNELS)
-        template = random.choice(self.STANDARD_TEMPLATES)
+        template = random.choice(self.STANDARD_TEMPLATES[channel])
 
         payload = {
             "user_id": self.user_id,
@@ -106,6 +109,10 @@ class PulseNotificationUser(HttpUser):
                 "subject": f"Load Test - {template}",
                 "name": "LoadTest User",
                 "message": f"Test notification at {uuid.uuid4().hex[:8]}",
+                "invoice": f"INV-{random.randint(1000, 9999)}",
+                "incident": f"INC-{random.randint(1000, 9999)}",
+                "service": "load-test",
+                "code": f"{random.randint(100000, 999999)}",
             },
             "idempotency_key": str(uuid.uuid4()),
         }
@@ -137,8 +144,8 @@ class PulseNotificationUser(HttpUser):
         Send high-priority OTP notification.
         Weight: 5 - less frequent but tests priority queue
         """
-        channel = random.choice(["sms", "email"])
-        template = random.choice(self.OTP_TEMPLATES)
+        channel = "sms"
+        template = self.OTP_TEMPLATE
 
         payload = {
             "user_id": self.user_id,
@@ -146,9 +153,7 @@ class PulseNotificationUser(HttpUser):
             "to": self._get_recipient(channel),
             "channel": channel,
             "context": {
-                "otp": f"{random.randint(100000, 999999)}",
                 "code": f"{random.randint(100000, 999999)}",
-                "expires_in": "5 minutes",
             },
             "idempotency_key": str(uuid.uuid4()),
         }

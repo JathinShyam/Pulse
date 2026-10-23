@@ -2,7 +2,12 @@
 // notifications/metrics_view.py).
 
 export type Channel = "email" | "sms" | "push";
-export type NotificationStatus = "pending" | "sent" | "failed" | "retrying";
+export type NotificationStatus =
+  | "pending"
+  | "sending"
+  | "sent"
+  | "failed"
+  | "retrying";
 export type MetricsWindow = "1h" | "24h" | "7d" | "30d";
 
 export interface NotificationSummary {
@@ -47,6 +52,7 @@ export interface ChannelMetrics {
   failed: number;
   retrying: number;
   pending: number;
+  sending?: number;
   success_rate: number | null;
   avg_latency_ms: number | null;
   p95_latency_ms: number | null;
@@ -61,24 +67,31 @@ export interface SeriesPoint {
 }
 
 export interface Metrics {
-  window: MetricsWindow;
-  generated_at: string;
-  total: number;
-  previous_total: number;
-  volume_change_pct: number | null;
-  by_status: Record<NotificationStatus, number>;
-  deliverability: number | null;
-  previous_deliverability: number | null;
-  latency: {
-    p50_ms: number | null;
-    p95_ms: number | null;
-    avg_ms: number | null;
-  };
-  avg_attempts: number | null;
-  throughput_per_min: number;
-  channels: ChannelMetrics[];
-  series: SeriesPoint[];
-  templates: number;
+  window?: MetricsWindow;
+  generated_at?: string;
+  total?: number;
+  /** Legacy compact endpoint value, e.g. "6.48M". */
+  total_volume?: string;
+  previous_total?: number;
+  volume_change_pct?: number | null;
+  /** Legacy trend string, e.g. "+14.2%". */
+  volume_trend?: string;
+  by_status?: Record<NotificationStatus, number>;
+  deliverability?: number | string | null;
+  previous_deliverability?: number | null;
+  /** Rich payload uses an object; the legacy endpoint returns a string. */
+  latency?:
+    | {
+        p50_ms: number | null;
+        p95_ms: number | null;
+        avg_ms: number | null;
+      }
+    | string;
+  avg_attempts?: number | null;
+  throughput_per_min?: number;
+  channels?: ChannelMetrics[];
+  series?: SeriesPoint[];
+  templates?: number;
 }
 
 export interface SendPayload {
@@ -90,6 +103,8 @@ export interface SendPayload {
   priority?: "high" | "low";
   idempotency_key?: string;
   title?: string;
+  subject?: string;
+  body?: string;
 }
 
 export interface SendResponse {
@@ -98,8 +113,11 @@ export interface SendResponse {
 }
 
 export interface Me {
-  id: number;
+  id: number | null;
   username: string;
   email: string;
   is_staff: boolean;
+  is_superuser: boolean;
+  auth: "jwt" | "api_key";
+  version: string;
 }

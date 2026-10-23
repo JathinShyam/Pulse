@@ -39,12 +39,15 @@ export function splitCompact(n: number | null | undefined): [string, string] {
   return m ? [m[1], m[2]] : [s, ""];
 }
 
-/** "18:04:12.891" */
+/** "18:04:12.891" in UTC (stable between server and browser). */
 export function fmtClock(iso: string | null | undefined, ms = true): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  const t = d.toLocaleTimeString("en-GB", { hour12: false });
-  return ms ? `${t}.${String(d.getMilliseconds()).padStart(3, "0")}` : t;
+  const t = d.toLocaleTimeString("en-GB", {
+    hour12: false,
+    timeZone: "UTC",
+  });
+  return ms ? `${t}.${String(d.getUTCMilliseconds()).padStart(3, "0")}` : t;
 }
 
 export function fmtDateTime(iso: string | null | undefined): string {
@@ -56,6 +59,7 @@ export function fmtDateTime(iso: string | null | undefined): string {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    timeZone: "UTC",
   });
 }
 
@@ -96,4 +100,25 @@ export function maskRecipient(to: string): string {
   if (to.startsWith("+") && to.length > 8)
     return `${to.slice(0, 5)}•••${to.slice(-4)}`;
   return to.length > 14 ? `${to.slice(0, 6)}…${to.slice(-4)}` : to;
+}
+
+/**
+ * Best-effort preview rendering for simple `{name}` placeholders.
+ *
+ * The API still renders with Python's `str.format`; this helper only
+ * substitutes exact, top-level keys so unknown or advanced expressions remain
+ * visible instead of being silently blanked out.
+ */
+export function renderPreview(
+  text: string,
+  context: Record<string, string>,
+): string {
+  return text.replace(/\{\{|\}\}|\{([^{}]+)\}/g, (match, field: string) => {
+    if (match === "{{") return "{";
+    if (match === "}}") return "}";
+    const key = field.trim();
+    return Object.prototype.hasOwnProperty.call(context, key)
+      ? context[key]
+      : match;
+  });
 }

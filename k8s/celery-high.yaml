@@ -53,16 +53,23 @@ spec:
           livenessProbe:
             exec:
               command:
-                - celery
-                - -A
-                - pulse
-                - inspect
-                - ping
-                - -d
-                - celery@$HOSTNAME
+                - sh
+                - -c
+                - celery -A pulse inspect ping -d high-worker@$HOSTNAME --timeout 10
             initialDelaySeconds: 60
             periodSeconds: 60
             timeoutSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - celery -A pulse inspect ping -d high-worker@$HOSTNAME --timeout 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
 ---
 # HorizontalPodAutoscaler for High Priority Workers
 apiVersion: autoscaling/v2

@@ -12,6 +12,7 @@ resources:
   - redis.yaml
   - postgres.yaml
   - web.yaml
+  - frontend.yaml
   - celery-high.yaml
   - celery-low.yaml
   - celery-beat.yaml
@@ -19,13 +20,19 @@ resources:
   - metrics.yaml
   - ingress.yaml
 
-# Common labels for all resources
-commonLabels:
-  app.kubernetes.io/name: pulse
-  app.kubernetes.io/managed-by: kustomize
+# Common labels for all resources, including selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: pulse
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: true
+    includeTemplates: true
 
 # Image customization (override image tags here)
 images:
   - name: pulse
     newName: pulse # Replace with your-registry/pulse
+    newTag: latest # Replace with specific version tag
+  - name: pulse-frontend
+    newName: pulse-frontend # Replace with your-registry/pulse-frontend
     newTag: latest # Replace with specific version tag

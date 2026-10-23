@@ -40,6 +40,12 @@ def deliver(task, log_id: str, channel: str, send) -> None:
     metadata to store on the log. It raises PermanentDeliveryError for
     non-retryable failures; any other exception is retried with exponential
     backoff until NotificationLog.max_retries attempts have been made.
+
+    The row is atomically claimed (status -> "sending") before the provider
+    call. Celery delivers at-least-once, so duplicate executions, worker
+    redeliveries and late retries must lose the claim instead of sending
+    concurrently. A worker crash after the provider accepts the call but before
+    the status is recorded can still cause a duplicate provider attempt.
     """
     try:
         log = NotificationLog.objects.get(id=log_id)
@@ -49,21 +55,44 @@ def deliver(task, log_id: str, channel: str, send) -> None:
         )
         return
 
-    # Celery delivers at-least-once (acks_late, worker crashes, redeliveries):
-    # never send twice.
-    if log.status == "sent":
+    if log.status in NotificationLog.TERMINAL_STATUSES:
         logger.info(
-            "Notification %s already sent; skipping duplicate execution", log_id
+            "Notification %s is already terminal (%s); skipping duplicate execution",
+            log_id,
+            log.status,
+        )
+        return
+
+    if log.attempts >= log.max_retries:
+        log.atomic_update_status(
+            "failed",
+            error_message=log.error_message or "Retry budget exhausted",
+            next_retry_at=None,
+        )
+        logger.error(
+            "%s delivery to %s exhausted %s attempts (log=%s)",
+            channel,
+            mask_recipient(log.to),
+            log.max_retries,
+            log_id,
+        )
+        return
+
+    if not log.claim_for_delivery():
+        logger.info(
+            "Notification %s was claimed by another worker or is not due yet; "
+            "skipping %s send",
+            log_id,
+            channel,
         )
         return
 
     recipient = mask_recipient(log.to)
+    attempt = log.attempts
     try:
         provider_meta = send(log) or {}
     except PermanentDeliveryError as exc:
-        log.atomic_update_status(
-            "failed", count_attempt=True, error_message=str(exc), next_retry_at=None
-        )
+        log.atomic_update_status("failed", error_message=str(exc), next_retry_at=None)
         logger.error(
             "%s delivery to %s failed permanently (log=%s): %s",
             channel,
@@ -73,10 +102,9 @@ def deliver(task, log_id: str, channel: str, send) -> None:
         )
         return
     except Exception as exc:
-        attempt = log.attempts + 1
         if attempt >= log.max_retries:
             log.atomic_update_status(
-                "failed", count_attempt=True, error_message=str(exc), next_retry_at=None
+                "failed", error_message=str(exc), next_retry_at=None
             )
             logger.exception(
                 "%s delivery to %s failed after %s attempts (log=%s)",
@@ -90,7 +118,6 @@ def deliver(task, log_id: str, channel: str, send) -> None:
         delay = retry_delay_for(attempt)
         log.atomic_update_status(
             "retrying",
-            count_attempt=True,
             error_message=str(exc),
             next_retry_at=timezone.now() + timedelta(seconds=delay),
         )
@@ -109,7 +136,6 @@ def deliver(task, log_id: str, channel: str, send) -> None:
     now = timezone.now()
     log.atomic_update_status(
         "sent",
-        count_attempt=True,
         sent_at=now,
         last_attempt_at=now,
         next_retry_at=None,

@@ -3,10 +3,17 @@ API-key authentication.
 
 Clients authenticate with either header:
     X-API-Key: <key>
-    Authorization: Api-Key <key>        (also accepts "Bearer <key>")
+    Authorization: Api-Key <key>
 
-Keys are configured via the PULSE_API_KEYS environment variable (comma-separated),
-which allows zero-downtime rotation: add the new key, roll clients, remove the old.
+``Authorization: Bearer`` is reserved for JWT access tokens. A JWT is never
+interpreted as an API key (and vice versa), so the two schemes cannot collide.
+
+Keys are configured via the PULSE_API_KEYS environment variable (comma-separated).
+To rotate, add the new key, roll clients, then remove the old key and roll the
+API processes so they reload the environment.
+
+There is no anonymous or DEBUG bypass. Requests without a valid JWT or API key
+are rejected by DRF's IsAuthenticated permission.
 """
 
 import hashlib
@@ -14,7 +21,7 @@ import hmac
 from dataclasses import dataclass
 
 from django.conf import settings
-from rest_framework import authentication, exceptions, permissions
+from rest_framework import authentication, exceptions, throttling
 
 
 @dataclass(frozen=True)
@@ -27,12 +34,20 @@ class APIClient:
     def is_authenticated(self) -> bool:
         return True
 
+    @property
+    def pk(self) -> str:
+        return f"api-key:{self.key_fingerprint}"
+
     def __str__(self) -> str:
         return f"api-key:{self.key_fingerprint}"
 
 
-def _fingerprint(key: str) -> str:
+def fingerprint_key(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def _fingerprint(key: str) -> str:
+    return fingerprint_key(key)
 
 
 def _extract_key(request) -> str | None:
@@ -41,7 +56,7 @@ def _extract_key(request) -> str | None:
         return key.strip()
     auth_header = request.headers.get("Authorization", "")
     scheme, _, value = auth_header.partition(" ")
-    if scheme.lower() in {"api-key", "bearer"} and value.strip():
+    if scheme.lower() == "api-key" and value.strip():
         return value.strip()
     return None
 
@@ -52,7 +67,7 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         provided = _extract_key(request)
         if provided is None:
-            return None  # Let the permission class decide (401 or dev-mode access)
+            return None  # Let JWT auth (or the permission class) handle it.
 
         valid_keys = settings.PULSE_API_KEYS
         # Compare against every key in constant time to avoid timing oracles.
@@ -68,21 +83,22 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
         return self.keyword
 
 
-class HasAPIKeyOrDevMode(permissions.BasePermission):
-    """
-    Require a valid API key.
+class ClientRateThrottle(throttling.SimpleRateThrottle):
+    """Optional API-wide throttle keyed by the authenticated principal."""
 
-    Exception: when no keys are configured AND DEBUG is on, the API is open so
-    local development works out of the box. With DEBUG off and no keys
-    configured, every request is rejected (fail closed).
-    """
+    scope = "client"
 
-    message = "A valid API key is required (send it in the X-API-Key header)."
-
-    def has_permission(self, request, view):
-        if request.auth:
-            return True
-        return bool(settings.DEBUG and not settings.PULSE_API_KEYS)
+    def get_cache_key(self, request, view):
+        user = request.user
+        if user is None:
+            return None
+        if isinstance(user, APIClient):
+            ident = user.pk
+        elif getattr(user, "is_authenticated", False):
+            ident = f"user:{user.pk}"
+        else:  # pragma: no cover - IsAuthenticated rejects this first
+            return None
+        return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 try:  # Register the scheme with drf-spectacular so Swagger shows "Authorize".

@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 
 from django.conf import settings
@@ -5,7 +7,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import EmailValidator
 from rest_framework import serializers
 
-from .models import NotificationLog, NotificationTemplate
+from .models import NotificationTemplate
 
 SUPPORTED_CHANNELS = ("email", "sms", "push")
 E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
@@ -68,6 +70,18 @@ class SendNotificationSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Unique key to prevent duplicate sends",
     )
+    subject = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        help_text="Optional subject override (rendered with the same context)",
+    )
+    body = serializers.CharField(
+        max_length=10_000,
+        required=False,
+        allow_blank=True,
+        help_text="Optional body override (rendered with the same context)",
+    )
     channel = serializers.ChoiceField(
         choices=[
             (c, c.upper() if c == "sms" else c.title()) for c in SUPPORTED_CHANNELS
@@ -119,33 +133,39 @@ class SendNotificationSerializer(serializers.Serializer):
             )
         self._validate_recipient(channel, attrs)
 
-        idem_key = attrs.get("idempotency_key") or None
-        if idem_key:
-            existing = NotificationLog.objects.filter(idempotency_key=idem_key).first()
-            if existing:
-                if (existing.user_id, existing.to, existing.template_id) != (
-                    attrs["user_id"],
-                    attrs["to"],
-                    template.id,
-                ):
-                    raise serializers.ValidationError(
-                        {
-                            "idempotency_key": "This key was already used for a different request."
-                        },
-                        code="idempotency_conflict",
-                    )
-                attrs["existing_log"] = existing
+        attrs["idempotency_key"] = (attrs.get("idempotency_key") or "").strip() or None
+        attrs["subject"] = (attrs.get("subject") or "").strip()
+        attrs["body"] = attrs.get("body") or ""
+        attrs["title"] = (attrs.get("title") or "").strip()
 
         context = attrs.get("context", {})
-        attrs["rendered_body"] = render_template(
-            template.body_template, context, "body"
-        )
-        attrs["rendered_subject"] = render_template(
-            template.subject or "", context, "subject"
+        body_source = attrs["body"] or template.body_template
+        subject_source = attrs["subject"] or template.subject or ""
+        attrs["rendered_body"] = render_template(body_source, context, "body")
+        attrs["rendered_subject"] = render_template(subject_source, context, "subject")
+        attrs["rendered_title"] = render_template(
+            attrs["title"] or subject_source, context, "title"
         )
         attrs["template"] = template
         attrs["channel"] = channel
         attrs["queue"] = resolve_queue(template.name, attrs.get("priority"))
+        fingerprint_payload = {
+            "template_id": str(template.id),
+            "user_id": attrs["user_id"],
+            "to": attrs["to"],
+            "channel": channel,
+            "subject": subject_source,
+            "body": body_source,
+            "title": attrs.get("title") or "",
+            "priority": attrs.get("priority") or "",
+            "device_token": attrs.get("device_token") or "",
+            "context": context,
+        }
+        attrs["request_fingerprint"] = hashlib.sha256(
+            json.dumps(
+                fingerprint_payload, sort_keys=True, separators=(",", ":"), default=str
+            ).encode()
+        ).hexdigest()
         return attrs
 
     @staticmethod
@@ -166,6 +186,75 @@ class SendNotificationSerializer(serializers.Serializer):
                 )
         elif channel == "push":
             attrs["device_token"] = (attrs.get("device_token") or "").strip() or to
+
+
+class NotificationListQuerySerializer(serializers.Serializer):
+    """Validated filters for the notification list endpoint."""
+
+    user_id = serializers.CharField(max_length=100, required=False)
+    channel = serializers.ChoiceField(choices=SUPPORTED_CHANNELS, required=False)
+    status = serializers.ChoiceField(
+        choices=["pending", "sending", "sent", "failed", "retrying"],
+        required=False,
+    )
+    limit = serializers.IntegerField(min_value=1, max_value=200, default=50)
+
+
+class TemplateListQuerySerializer(serializers.Serializer):
+    channel = serializers.ChoiceField(choices=SUPPORTED_CHANNELS, required=False)
+
+
+class StatusCountsSerializer(serializers.Serializer):
+    pending = serializers.IntegerField()
+    sending = serializers.IntegerField()
+    sent = serializers.IntegerField()
+    failed = serializers.IntegerField()
+    retrying = serializers.IntegerField()
+
+
+class LatencySummarySerializer(serializers.Serializer):
+    p50_ms = serializers.FloatField(allow_null=True)
+    p95_ms = serializers.FloatField(allow_null=True)
+    avg_ms = serializers.FloatField(allow_null=True)
+
+
+class ChannelMetricsSerializer(serializers.Serializer):
+    channel = serializers.CharField()
+    total = serializers.IntegerField()
+    sent = serializers.IntegerField()
+    failed = serializers.IntegerField()
+    retrying = serializers.IntegerField()
+    pending = serializers.IntegerField()
+    sending = serializers.IntegerField()
+    success_rate = serializers.FloatField(allow_null=True)
+    avg_latency_ms = serializers.FloatField(allow_null=True)
+    p95_latency_ms = serializers.FloatField(allow_null=True)
+
+
+class SeriesPointSerializer(serializers.Serializer):
+    bucket = serializers.DateTimeField()
+    email = serializers.IntegerField()
+    sms = serializers.IntegerField()
+    push = serializers.IntegerField()
+    total = serializers.IntegerField()
+
+
+class MetricsResponseSerializer(serializers.Serializer):
+    window = serializers.ChoiceField(choices=["1h", "24h", "7d", "30d"])
+    generated_at = serializers.DateTimeField()
+    total = serializers.IntegerField()
+    total_volume = serializers.CharField()
+    previous_total = serializers.IntegerField()
+    volume_change_pct = serializers.FloatField(allow_null=True)
+    volume_trend = serializers.CharField()
+    by_status = StatusCountsSerializer()
+    deliverability = serializers.FloatField(allow_null=True)
+    latency = LatencySummarySerializer()
+    avg_attempts = serializers.FloatField(allow_null=True)
+    throughput_per_min = serializers.FloatField()
+    channels = ChannelMetricsSerializer(many=True)
+    series = SeriesPointSerializer(many=True)
+    templates = serializers.IntegerField()
 
 
 # ============================================================================
@@ -208,14 +297,15 @@ class NotificationStatusResponseSerializer(serializers.Serializer):
     channel = serializers.CharField(help_text="Delivery channel")
     to = serializers.CharField(help_text="Destination address")
     status = serializers.ChoiceField(
-        choices=["pending", "sent", "failed", "retrying"],
+        choices=["pending", "sending", "sent", "failed", "retrying"],
         help_text="Current status",
     )
     attempts = serializers.IntegerField(help_text="Number of delivery attempts")
     max_retries = serializers.IntegerField(help_text="Maximum retry attempts")
     created_at = serializers.DateTimeField(help_text="Creation timestamp")
     sent_at = serializers.DateTimeField(
-        allow_null=True, help_text="Delivery timestamp (null if not sent)"
+        allow_null=True,
+        help_text="Provider acknowledgement timestamp (null if not sent)",
     )
     last_attempt_at = serializers.DateTimeField(
         allow_null=True, help_text="Last attempt timestamp"
@@ -245,15 +335,19 @@ class NotificationSummarySerializer(serializers.Serializer):
     status = serializers.CharField(help_text="Current status")
     attempts = serializers.IntegerField(help_text="Number of delivery attempts")
     created_at = serializers.DateTimeField(help_text="Creation timestamp")
-    sent_at = serializers.DateTimeField(allow_null=True, help_text="Delivery timestamp")
+    sent_at = serializers.DateTimeField(
+        allow_null=True, help_text="Provider acknowledgement timestamp"
+    )
 
 
 class NotificationListResponseSerializer(serializers.Serializer):
     """Response for notification list endpoint."""
 
-    count = serializers.IntegerField(help_text="Number of notifications returned")
+    count = serializers.IntegerField(
+        help_text="Total matching notifications before the limit is applied"
+    )
     results = NotificationSummarySerializer(
-        many=True, help_text="List of notifications"
+        many=True, help_text="Notifications in the requested page (up to limit)"
     )
 
 
@@ -273,5 +367,7 @@ class TemplateSerializer(serializers.Serializer):
 class TemplateListResponseSerializer(serializers.Serializer):
     """Response for template list endpoint."""
 
-    count = serializers.IntegerField(help_text="Number of templates returned")
-    results = TemplateSerializer(many=True, help_text="List of templates")
+    count = serializers.IntegerField(
+        help_text="Total matching templates before the 200-row response cap"
+    )
+    results = TemplateSerializer(many=True, help_text="Up to 200 matching templates")

@@ -1,725 +1,878 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useId } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
-  Bell,
+  ArrowUpRight,
   Check,
   CheckCircle2,
-  Copy,
-  ExternalLink,
-  Flame,
-  Globe,
-  Layers,
-  Lock,
-  Mail,
-  MessageSquare,
-  Radio,
-  RefreshCw,
-  Rocket,
+  ChevronDown,
+  KeyRound,
+  Loader2,
+  MessageSquareText,
+  RotateCcw,
   Send,
-  Shield,
-  Smartphone,
-  Sparkles,
-  Terminal,
-  Zap,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ConsoleShell } from "@/components/console-shell";
+import { CopyButton } from "@/components/copy-button";
+import { PulseMark } from "@/components/logo";
 import { useSendNotification, useTemplates } from "@/lib/queries";
-import { errorMessage } from "@/lib/api";
+import { errorMessage, errorStatus } from "@/lib/api";
+import { channelMeta } from "@/lib/channels";
+import { renderPreview } from "@/lib/format";
+import type { Channel } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const CHANNEL_ORDER: Channel[] = ["email", "sms", "push"];
+
+const CHANNEL_DEFAULTS: Record<Channel, string> = {
+  email: "ops-lead@pulse.dev",
+  sms: "+14155550123",
+  push: "demo-device-token",
+};
+
+interface TemplateOption {
+  name: string;
+  subject: string;
+  body: string;
+  context?: Record<string, string>;
+}
+
+const FALLBACK_TEMPLATES: Record<Channel, TemplateOption[]> = {
+  email: [
+    {
+      name: "welcome_email",
+      subject: "Welcome to Pulse",
+      body: "Hello {name}, welcome aboard. Your first delivery is on us.",
+      context: { name: "Alex" },
+    },
+    {
+      name: "invoice_ready",
+      subject: "Your invoice is ready",
+      body: "Hi {name}, invoice {invoice} is ready to review.",
+      context: { name: "Alex", invoice: "INV-1042" },
+    },
+    {
+      name: "weekly_digest",
+      subject: "Your weekly digest",
+      body: "Here is what happened across your workspace this week, {name}.",
+      context: { name: "Alex" },
+    },
+  ],
+  sms: [
+    {
+      name: "otp_login",
+      subject: "",
+      body: "Your Pulse verification code is {code}. It expires in 5 minutes.",
+      context: { code: "482913" },
+    },
+  ],
+  push: [
+    {
+      name: "security_alert",
+      subject: "Security alert",
+      body: "A new sign-in was detected for {name}.",
+      context: { name: "Alex" },
+    },
+    {
+      name: "incident_opened",
+      subject: "Incident opened",
+      body: "Incident {incident} has been opened for {service}.",
+      context: { incident: "INC-8891", service: "delivery-api" },
+    },
+  ],
+};
+
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.1.0";
+
+function priorityForTemplate(name: string): "high" | "low" {
+  return /(otp|verif|2fa)/i.test(name) ? "high" : "low";
+}
+
+function sampleContext(
+  channel: Channel,
+  name?: string,
+): Record<string, string> {
+  if (!name) return {};
+  return (
+    FALLBACK_TEMPLATES[channel].find((template) => template.name === name)
+      ?.context ?? {}
+  );
+}
+
+function parseContext(value: string): Record<string, string> | null {
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).map(([key, item]) => [key, String(item)]),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function makeKey() {
+  return `idem_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  hint,
+}: {
+  htmlFor: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="mb-1.5 flex items-baseline justify-between gap-3">
+      <label htmlFor={htmlFor} className="text-[12px] font-medium text-ink">
+        {children}
+      </label>
+      {hint && <span className="text-[10px] text-faint">{hint}</span>}
+    </div>
+  );
+}
 
 export default function ComposerPage() {
-  const [activeChannels, setActiveChannels] = useState<{
-    apns: boolean;
-    fcm: boolean;
-    ses: boolean;
-    sms: boolean;
-  }>({
-    apns: true,
-    fcm: true,
-    ses: true,
-    sms: true,
-  });
-
-  const [previewMode, setPreviewMode] = useState<"ios" | "android" | "email">(
-    "ios",
-  );
-  const [priority, setPriority] = useState<"high" | "low">("high");
+  const ids = useId();
+  const [channel, setChannel] = useState<Channel>("email");
+  const [templateName, setTemplateName] = useState("");
+  const [recipient, setRecipient] = useState(CHANNEL_DEFAULTS.email);
+  const [userId, setUserId] = useState("user_9918");
+  // Template fields are derived defaults with optional user overrides. This
+  // keeps live template data arriving from the API from needing a state-sync
+  // effect, and preserves anything typed while templates are loading.
+  const [titleOverride, setTitleOverride] = useState<string | null>(null);
+  const [bodyOverride, setBodyOverride] = useState<string | null>(null);
+  const [priorityOverride, setPriorityOverride] = useState<
+    "high" | "low" | null
+  >(null);
+  const [contextOverride, setContextOverride] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [dispatchResult, setDispatchResult] = useState<{
     id: string;
     status: string;
   } | null>(null);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  // Form states
-  const [templateName, setTemplateName] = useState("test_email");
-  const [recipient, setRecipient] = useState("ops-lead@pulse.dev");
-  const [userId, setUserId] = useState("secops-admin");
-  const [title, setTitle] = useState(
-    "Critical Security Alert: Zero-Day Canary",
-  );
-  const [body, setBody] = useState(
-    "Cluster [us-east-1] ingress breach canary triggered at 14:02:18 UTC.",
-  );
-  const [category, setCategory] = useState("INFRA_SECURITY");
 
   const sendMutation = useSendNotification();
-  const { data: templatesData } = useTemplates();
+  const {
+    data: templatesData,
+    isPending: templatesPending,
+    isError: templatesError,
+  } = useTemplates(channel);
 
-  const handleChannelToggle = (channel: keyof typeof activeChannels) => {
-    setActiveChannels((prev) => ({ ...prev, [channel]: !prev[channel] }));
-  };
-
-  const handleDispatch = async () => {
-    setDispatchResult(null);
-    setDispatchError(null);
-
-    const idempotencyKey = `idem_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-
-    // Resolve channel to send
-    let resolvedChannel: "email" | "sms" | "push" = "email";
-    if (activeChannels.apns || activeChannels.fcm) resolvedChannel = "push";
-    else if (activeChannels.sms) resolvedChannel = "sms";
-    else if (activeChannels.ses) resolvedChannel = "email";
-
-    try {
-      const res = await sendMutation.mutateAsync({
-        template_name: templateName,
-        user_id: userId,
-        to: recipient,
-        channel: resolvedChannel,
-        priority: priority,
-        idempotency_key: idempotencyKey,
-        title: title,
-        context: {
-          incident_id: "INC-8891",
-          severity: "CRITICAL_P0",
-          name: userId,
-          subject: title,
-          body: body,
-        },
-      });
-      setDispatchResult({ id: res.notification_id, status: res.status });
-    } catch (err) {
-      setDispatchError(errorMessage(err));
+  const apiTemplates = useMemo(
+    () =>
+      templatesData?.results?.filter(
+        (template) => template.channel === channel,
+      ) ?? [],
+    [templatesData, channel],
+  );
+  // Sample names are never sendable; only fall back when the request failed.
+  const usingSampleTemplates = templatesError && !templatesData;
+  const templateOptions: TemplateOption[] = useMemo(() => {
+    if (apiTemplates.length) {
+      return apiTemplates.map((template) => ({
+        name: template.name,
+        subject: template.subject,
+        body: template.body_template,
+      }));
     }
-  };
+    return usingSampleTemplates ? FALLBACK_TEMPLATES[channel] : [];
+  }, [apiTemplates, usingSampleTemplates, channel]);
+  // Fall back to the first available template until the user picks one.
+  const effectiveTemplate =
+    templateOptions.find((template) => template.name === templateName) ??
+    templateOptions[0];
 
-  const jsonPayload = JSON.stringify(
+  const title = titleOverride ?? effectiveTemplate?.subject ?? "";
+  const body = bodyOverride ?? effectiveTemplate?.body ?? "";
+  const priority =
+    priorityOverride ?? priorityForTemplate(effectiveTemplate?.name ?? "");
+  const defaultContext = JSON.stringify(
+    sampleContext(channel, effectiveTemplate?.name),
+    null,
+    2,
+  );
+  const contextJson = contextOverride ?? defaultContext;
+
+  // A per-mount random key avoids the global collisions of a deterministic
+  // id. Deferring one tick keeps the server-rendered placeholder stable.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIdempotencyKey(makeKey()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const previewContext = useMemo(
+    () => parseContext(contextJson) ?? {},
+    [contextJson],
+  );
+  const previewTitle = renderPreview(title, previewContext);
+  const previewBody = renderPreview(body, previewContext);
+
+  const requestPreview = JSON.stringify(
     {
-      dispatch_id: `dsp_${Date.now().toString(36)}`,
-      urgency: priority === "high" ? "CRITICAL_P0" : "STANDARD_P2",
-      notification: {
-        title: title,
-        body: body,
-        badge: 1,
-        category: category,
-      },
-      recipient: recipient,
-      target_user: userId,
-      channels_enabled: {
-        apns_push: activeChannels.apns,
-        fcm_android: activeChannels.fcm,
-        ses_email: activeChannels.ses,
-        direct_sms: activeChannels.sms,
-      },
-      hmac_digest: "e3b9cd44298f01c149afbf4c0996fb02427ae0...",
+      template_name: effectiveTemplate?.name ?? templateName,
+      user_id: userId,
+      to: recipient,
+      channel,
+      priority,
+      idempotency_key: idempotencyKey || "idem_…",
+      subject: title,
+      body,
+      context: previewContext,
     },
     null,
     2,
   );
 
+  const selectChannel = (next: Channel) => {
+    setChannel(next);
+    setRecipient((current) =>
+      Object.values(CHANNEL_DEFAULTS).includes(current)
+        ? CHANNEL_DEFAULTS[next]
+        : current,
+    );
+    // The next channel's templates may still be loading; clearing the name
+    // makes the first option the derived default when the query resolves.
+    setTemplateName("");
+    setTitleOverride(null);
+    setBodyOverride(null);
+    setPriorityOverride(null);
+    setContextOverride(null);
+    setDispatchError(null);
+    setDispatchResult(null);
+  };
+
+  const selectTemplate = (name: string) => {
+    setTemplateName(name);
+    setTitleOverride(null);
+    setBodyOverride(null);
+    setPriorityOverride(null);
+    setContextOverride(null);
+  };
+
+  const reset = () => {
+    setChannel("email");
+    setTemplateName("");
+    setRecipient(CHANNEL_DEFAULTS.email);
+    setUserId("user_9918");
+    setTitleOverride(null);
+    setBodyOverride(null);
+    setPriorityOverride(null);
+    setContextOverride(null);
+    setIdempotencyKey(makeKey());
+    setDispatchError(null);
+    setDispatchResult(null);
+  };
+
+  const handleDispatch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setDispatchError(null);
+    setDispatchResult(null);
+
+    if (usingSampleTemplates) {
+      setDispatchError(
+        "Sample templates cannot be sent. Create a live template for this channel first.",
+      );
+      return;
+    }
+    if (!effectiveTemplate) {
+      setDispatchError(
+        templatesPending
+          ? "Templates are still loading."
+          : "No live template is available for this channel.",
+      );
+      return;
+    }
+    if (!recipient.trim()) {
+      setDispatchError("Add a recipient before sending.");
+      return;
+    }
+    if (!userId.trim()) {
+      setDispatchError("Add a user ID before sending.");
+      return;
+    }
+
+    let parsed: unknown = {};
+    try {
+      parsed = contextJson.trim() ? JSON.parse(contextJson) : {};
+    } catch {
+      setDispatchError("Template variables must be valid JSON.");
+      return;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      setDispatchError("Template variables must be a JSON object.");
+      return;
+    }
+
+    const context = Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => [key, String(value)]),
+    );
+    const requestKey = idempotencyKey || makeKey();
+    if (!idempotencyKey) setIdempotencyKey(requestKey);
+
+    try {
+      const response = await sendMutation.mutateAsync({
+        template_name: effectiveTemplate.name,
+        user_id: userId,
+        to: recipient,
+        channel,
+        priority,
+        idempotency_key: requestKey,
+        subject: title,
+        body,
+        context,
+      });
+      setDispatchResult({
+        id: response.notification_id,
+        status: response.status,
+      });
+      setIdempotencyKey(makeKey());
+    } catch (error) {
+      // A 503 means the row was persisted as failed; the same key will keep
+      // returning that failed record. Rotate so a later retry can create a
+      // fresh dispatch, while ambiguous network errors keep the key.
+      if (errorStatus(error) === 503) setIdempotencyKey(makeKey());
+      setDispatchError(errorMessage(error));
+    }
+  };
+
+  const meta = channelMeta(channel);
+  const ChannelIcon = meta.icon;
+  const pending = sendMutation.isPending;
+  const dispatchFailed = dispatchResult?.status === "failed";
+  const dispatchDuplicate =
+    dispatchResult !== null && dispatchResult.status !== "queued";
+
   return (
     <ConsoleShell activePath="composer">
-      <div className="flex flex-col gap-6">
-        {/* Top Header / Presets Bar */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-line">
+      <div className="space-y-7">
+        <header className="flex flex-col gap-4 border-b border-line pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 label-caps text-subtle">
-              <span>DISPATCH WORKSPACE</span>
-              <span>//</span>
-              <span className="text-brand">EVENT COMPOSER</span>
-            </div>
-            <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight mt-1">
-              Mission Critical Signal Dispatch Composer
+            <p className="eyebrow">Composer</p>
+            <h1 className="mt-2 font-display text-[2.6rem] leading-none font-semibold tracking-[-0.05em] sm:text-[3.2rem]">
+              New dispatch
             </h1>
+            <p className="mt-3 max-w-[48ch] text-[13px] leading-relaxed text-muted">
+              Send one message through one channel, with a trace from the first
+              request to the provider acknowledgement.
+            </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label-caps px-2.5 py-1 rounded bg-card border border-line text-white">
-              US-EAST-1 [PRIMARY] 38MS
-            </span>
-            <span className="label-caps px-2.5 py-1 rounded bg-brand/10 border border-brand/30 text-brand">
-              SCHEMA VALIDATED v2.4.1
+          <div className="flex items-center gap-2">
+            <span className="badge border-line bg-surface px-2.5 py-1 text-[9px]">
+              Schema v{VERSION}
             </span>
             <button
-              onClick={() => {
-                setTitle("High-Severity Infrastructure Canary Alarm");
-                setBody(
-                  "Telemetry threshold exceeded: 4,800 errors/sec in edge cluster.",
-                );
-                setCategory("CRITICAL_OUTAGE");
-                setPriority("high");
-              }}
-              className="px-3 py-1 rounded-full bg-brand/15 hover:bg-brand/25 text-brand border border-brand/40 font-mono text-xs font-semibold transition-colors"
+              type="button"
+              onClick={reset}
+              className="btn btn-secondary btn-sm"
             >
-              P0 - Security Preset
+              <RotateCcw className="size-3.5" />
+              Reset
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* 01 // Active Delivery Channel Mesh */}
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="label-caps text-subtle">
-              01 // ACTIVE DELIVERY CHANNEL MESH
-            </span>
-            <span className="font-mono text-xs text-brand font-semibold">
-              4 OF 5 CHANNELS ENGAGED
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Apple APNs */}
-            <div
-              onClick={() => handleChannelToggle("apns")}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                activeChannels.apns
-                  ? "bg-card border-brand/60 shadow-[0_0_20px_rgba(254,88,36,0.15)]"
-                  : "bg-surface/50 border-line opacity-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-brand">
-                  <Smartphone className="w-4 h-4" />
-                  <span className="font-display font-bold text-sm text-white">
-                    Apple APNs
-                  </span>
-                </div>
-                <div
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                    activeChannels.apns
-                      ? "bg-brand"
-                      : "bg-card border border-line"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      activeChannels.apns ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-muted">HTTP/2 Multiplexed Pipe</p>
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-ok font-semibold">99.98% HEALTH</span>
-                <span className="text-subtle">18ms</span>
-              </div>
-            </div>
-
-            {/* Google FCM */}
-            <div
-              onClick={() => handleChannelToggle("fcm")}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                activeChannels.fcm
-                  ? "bg-card border-brand/60 shadow-[0_0_20px_rgba(254,88,36,0.15)]"
-                  : "bg-surface/50 border-line opacity-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-brand">
-                  <Bell className="w-4 h-4" />
-                  <span className="font-display font-bold text-sm text-white">
-                    Google FCM
-                  </span>
-                </div>
-                <div
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                    activeChannels.fcm
-                      ? "bg-brand"
-                      : "bg-card border border-line"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      activeChannels.fcm ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-muted">HTTP v1 Protocol Async</p>
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-ok font-semibold">99.94% HEALTH</span>
-                <span className="text-subtle">24ms</span>
-              </div>
-            </div>
-
-            {/* AWS SES */}
-            <div
-              onClick={() => handleChannelToggle("ses")}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                activeChannels.ses
-                  ? "bg-card border-cyan-500/60 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
-                  : "bg-surface/50 border-line opacity-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-cyan-400">
-                  <Mail className="w-4 h-4" />
-                  <span className="font-display font-bold text-sm text-white">
-                    AWS SES
-                  </span>
-                </div>
-                <div
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                    activeChannels.ses
-                      ? "bg-cyan-400"
-                      : "bg-card border border-line"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      activeChannels.ses ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-muted">
-                DKIM/SPF High-Throughput
-              </p>
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-ok font-semibold">99.82% HEALTH</span>
-                <span className="text-subtle">128ms</span>
-              </div>
-            </div>
-
-            {/* Global SMS */}
-            <div
-              onClick={() => handleChannelToggle("sms")}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                activeChannels.sms
-                  ? "bg-card border-purple-500/60 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
-                  : "bg-surface/50 border-line opacity-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-purple-400">
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="font-display font-bold text-sm text-white">
-                    Global SMS
-                  </span>
-                </div>
-                <div
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                    activeChannels.sms
-                      ? "bg-purple-400"
-                      : "bg-card border border-line"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      activeChannels.sms ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-muted">
-                Direct Tier-1 SMPP Trunk
-              </p>
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-ok font-semibold">99.91% HEALTH</span>
-                <span className="text-subtle">850ms</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 02 // Scope: Audience Filtering & Blast Radius */}
-        <section className="p-5 rounded-2xl bg-card border border-line flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="label-caps text-subtle">02 // SCOPE</span>
-              <span className="font-display font-bold text-white text-base">
-                Audience Filtering &amp; Blast Radius
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand/15 text-brand font-mono text-xs font-semibold">
-              <Radio className="w-3.5 h-3.5" />
-              <span>128,482 Estimated Devices</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-            <span className="px-2.5 py-1 rounded-lg bg-surface border border-line text-brand">
-              tier: enterprise-tier-1{" "}
-              <span className="text-subtle ml-1 cursor-pointer">×</span>
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-surface border border-line text-white">
-              region: apac-east + us-east{" "}
-              <span className="text-subtle ml-1 cursor-pointer">×</span>
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-surface border border-line text-white">
-              role: secops-admin{" "}
-              <span className="text-subtle ml-1 cursor-pointer">×</span>
-            </span>
-            <button className="px-2.5 py-1 rounded-lg bg-surface hover:bg-card border border-dashed border-line text-muted hover:text-white transition-colors">
-              + Filter Group
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-line font-mono text-xs">
-            <div>
-              <span className="text-subtle label-caps">PRIORITY LEVEL</span>
-              <div className="mt-1 flex gap-2">
-                <button
-                  onClick={() => setPriority("high")}
-                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                    priority === "high"
-                      ? "bg-brand text-pitch shadow-sm"
-                      : "bg-surface border border-line text-muted hover:text-white"
-                  }`}
-                >
-                  P0 - Instant Critical
-                </button>
-                <button
-                  onClick={() => setPriority("low")}
-                  className={`px-3 py-1 rounded-lg transition-all ${
-                    priority === "low"
-                      ? "bg-card border border-line text-white font-bold"
-                      : "bg-surface border border-line text-muted hover:text-white"
-                  }`}
-                >
-                  P2 - Standard
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-subtle label-caps">TTL RETENTION</span>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-brand font-bold">1,800s</span>
-                <span className="text-subtle text-[11px]">
-                  (30 min timeout)
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-subtle label-caps">RATE THROTTLE</span>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-white font-bold">25,000 req/s</span>
-                <span className="text-ok text-[11px]">(Uncapped Tier)</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 03 // Main Grid: Code Payload Editor + Simulation Phone Preview */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left: Interactive Code Form & Payload (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
-            {/* Live Form Inputs */}
-            <div className="p-5 rounded-2xl bg-card border border-line flex flex-col gap-4">
-              <span className="label-caps text-brand">SIGNAL PARAMETERS</span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label-caps text-subtle block mb-1.5">
-                    Template Name
-                  </label>
-                  <select
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono text-white focus:border-brand focus:outline-none"
-                  >
-                    <option value="test_email">
-                      test_email (Email Default)
-                    </option>
-                    <option value="test_sms">test_sms (SMS OTP)</option>
-                    <option value="welcome_email">
-                      welcome_email (Onboarding)
-                    </option>
-                    <option value="security_alert">
-                      security_alert (P0 Incident)
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="label-caps text-subtle block mb-1.5">
-                    Destination Recipient
-                  </label>
-                  <input
-                    type="text"
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    placeholder="email, phone, or token"
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono text-white focus:border-brand focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="label-caps text-subtle block mb-1.5">
-                  Signal Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-medium text-white focus:border-brand focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="label-caps text-subtle block mb-1.5">
-                  Payload Body Message
-                </label>
-                <textarea
-                  rows={3}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono text-white focus:border-brand focus:outline-none leading-relaxed"
-                />
-              </div>
-            </div>
-
-            {/* Raw JSON Egress Spec */}
-            <div className="p-5 rounded-2xl bg-pitch/90 border border-line flex flex-col gap-3 font-mono text-xs">
-              <div className="flex items-center justify-between border-b border-line pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-bold text-xs">
-                    payload_dispatch_v2.json
-                  </span>
-                  <span className="label-caps text-[9px] px-1.5 py-0.5 rounded bg-card text-subtle">
-                    UTF-8
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(jsonPayload);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    className="px-2.5 py-1 rounded bg-card hover:bg-card-hover border border-line text-[11px] text-muted hover:text-white flex items-center gap-1 transition-colors"
-                  >
-                    {copied ? (
-                      <Check className="w-3 h-3 text-ok" />
-                    ) : (
-                      <Copy className="w-3 h-3" />
-                    )}
-                    <span>{copied ? "Copied" : "Copy"}</span>
-                  </button>
-                  <span className="label-caps px-2 py-0.5 rounded bg-ok/10 text-ok border border-ok/30">
-                    Validated
-                  </span>
-                </div>
-              </div>
-
-              <pre className="text-muted leading-relaxed overflow-x-auto text-[11px] max-h-56">
-                {jsonPayload}
-              </pre>
-            </div>
-          </div>
-
-          {/* Right: Phone & Lockscreen Simulation (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            <div className="p-6 rounded-2xl bg-card border border-line flex flex-col items-center">
-              <div className="w-full flex items-center justify-between border-b border-line pb-4 mb-6">
-                <span className="label-caps text-subtle">03 // SIMULATION</span>
-                <div className="flex items-center p-1 rounded-full bg-surface border border-line text-xs font-mono">
-                  {(["ios", "android", "email"] as const).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setPreviewMode(m)}
-                      className={`px-3 py-0.5 rounded-full capitalize transition-all ${
-                        previewMode === m
-                          ? "bg-brand text-pitch font-bold shadow-sm"
-                          : "text-muted hover:text-white"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Styled iOS Phone Mockup from Stitch Screen 1 */}
-              <div className="relative w-72 h-[450px] rounded-[38px] bg-pitch border-4 border-line/80 shadow-2xl p-4 flex flex-col justify-between overflow-hidden">
-                {/* Dynamic Notch */}
-                <div className="mx-auto w-24 h-4 bg-line rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-pitch" />
-                </div>
-
-                {/* Lockscreen Clock */}
-                <div className="flex flex-col items-center mt-3 font-display">
-                  <span className="label-caps text-[10px] text-subtle">
-                    TUESDAY, OCT 24
-                  </span>
-                  <span className="font-extrabold text-4xl text-white tracking-tight mt-0.5">
-                    09:41
-                  </span>
-                </div>
-
-                {/* Glowing Notification Card */}
-                <div className="my-auto p-3.5 rounded-2xl bg-card/95 border border-brand/40 shadow-[0_0_30px_rgba(254,88,36,0.18)] backdrop-blur-md flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded-md bg-brand flex items-center justify-center text-pitch">
-                        <Radio className="w-2.5 h-2.5" />
-                      </div>
-                      <span className="label-caps text-white text-[9px]">
-                        PULSE TELEMETRY
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono text-subtle">
-                      now
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <span className="font-sans font-bold text-xs text-white leading-tight">
-                      {title}
-                    </span>
-                    <span className="font-sans text-[11px] text-muted mt-1 leading-snug line-clamp-3">
-                      {body}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-line text-[10px] font-mono text-center">
-                    <button className="py-1 rounded bg-brand/20 text-brand font-bold hover:bg-brand/30 transition-colors">
-                      Investigate Node
-                    </button>
-                    <button className="py-1 rounded bg-surface text-muted hover:text-white transition-colors">
-                      Acknowledge
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bottom Home Indicator */}
-                <div className="mx-auto w-28 h-1 bg-muted/40 rounded-full" />
-              </div>
-
-              {/* Hardware Footprint Stats */}
-              <div className="w-full mt-6 pt-4 border-t border-line grid grid-cols-2 gap-2 font-mono text-[11px]">
-                <div>
-                  <span className="text-subtle label-caps block">
-                    PAYLOAD FOOTPRINT
-                  </span>
-                  <span className="text-white font-bold">
-                    1.42 KB (OPTIMAL)
-                  </span>
-                </div>
-                <div>
-                  <span className="text-subtle label-caps block">
-                    PROJECTED LATENCY
-                  </span>
-                  <span className="text-ok font-bold">~34ms E2E</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Feedback Alert Banners */}
         {dispatchResult && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-xl bg-ok/10 border border-ok/30 flex items-center justify-between text-xs font-mono"
+          <div
+            className={cn(
+              "reveal flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+              dispatchFailed
+                ? "border-err/25 bg-err/[0.04]"
+                : "border-ok/30 bg-ok/[0.045]",
+            )}
           >
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-ok shrink-0" />
+            <div className="flex items-start gap-3">
+              {dispatchFailed ? (
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-err" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" />
+              )}
               <div>
-                <span className="text-ok font-bold">
-                  Signal Dispatched to Celery Queue!
-                </span>
-                <p className="text-fg mt-0.5">
-                  Notification ID:{" "}
-                  <span className="text-white font-bold">
-                    {dispatchResult.id}
-                  </span>{" "}
-                  • Status:{" "}
-                  <span className="text-ok font-bold capitalize">
-                    {dispatchResult.status}
-                  </span>
+                <p className="text-[13px] font-medium">
+                  {dispatchFailed
+                    ? "This idempotency key already returned a failed dispatch."
+                    : dispatchDuplicate
+                      ? "Existing record returned for this idempotency key."
+                      : "Notification accepted by the queue."}
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  {dispatchResult.id} · {dispatchResult.status}
                 </p>
               </div>
             </div>
-            <Link
-              href="/dashboard"
-              className="px-3 py-1.5 rounded-lg bg-ok text-pitch font-bold hover:bg-emerald-400 transition-colors"
-            >
-              View in Feed →
-            </Link>
-          </motion.div>
+            <div className="flex items-center gap-3 pl-7 sm:pl-0">
+              <Link
+                href={`/logs?q=${encodeURIComponent(dispatchResult.id)}`}
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-ink hover:text-accent-ink"
+              >
+                View delivery
+                <ArrowUpRight className="size-3.5" />
+              </Link>
+              <CopyButton
+                value={dispatchResult.id}
+                label="Copy ID"
+                className="border border-line bg-surface text-muted hover:text-ink"
+              />
+            </div>
+          </div>
         )}
 
         {dispatchError && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-xl bg-err/10 border border-err/30 flex items-center gap-3 text-xs font-mono text-err"
+          <div
+            role="alert"
+            className="reveal flex items-start gap-3 rounded-xl border border-err/25 bg-err/[0.04] p-4"
           >
-            <AlertCircle className="w-5 h-5 shrink-0" />
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-err" />
             <div>
-              <span className="font-bold">Dispatch Failed</span>
-              <p className="text-fg/80 mt-0.5">{dispatchError}</p>
+              <p className="text-[13px] font-medium">
+                The dispatch did not complete.
+              </p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
+                {dispatchError}
+              </p>
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {/* Bottom Action Bar */}
-        <div className="sticky bottom-4 z-40 p-4 rounded-2xl bg-card/95 backdrop-blur-xl border border-line shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="w-2 h-2 rounded-full bg-ok" />
-            <span className="text-white font-semibold">
-              Ready for Dispatch Pipeline
-            </span>
-            <span className="text-subtle hidden md:inline">
-              • Cryptographic nonce seeded
-            </span>
+        <form
+          onSubmit={handleDispatch}
+          className="grid items-start gap-6 lg:grid-cols-12"
+        >
+          <div className="space-y-6 lg:col-span-7">
+            {/* Channel */}
+            <section className="panel overflow-hidden">
+              <div className="flex items-center justify-between border-b border-line px-5 py-4 sm:px-6">
+                <div>
+                  <h2 className="text-[14px] font-semibold">Channel</h2>
+                  <p className="mt-0.5 text-[11px] text-muted">
+                    One channel per request.
+                  </p>
+                </div>
+                <ChannelIcon className="size-4 text-faint" />
+              </div>
+              <div
+                role="radiogroup"
+                aria-label="Delivery channel"
+                className="grid grid-cols-3 gap-2 p-4 sm:p-5"
+              >
+                {CHANNEL_ORDER.map((key) => {
+                  const item = channelMeta(key);
+                  const Icon = item.icon;
+                  const selected = channel === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => selectChannel(key)}
+                      className={cn(
+                        "relative rounded-xl border p-3 text-left transition-colors sm:p-3.5",
+                        selected
+                          ? "border-ink bg-surface"
+                          : "border-line bg-surface/60 hover:border-line-strong",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Icon
+                          className={cn(
+                            "size-4",
+                            selected ? "text-ink" : "text-faint",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "flex size-4 items-center justify-center rounded-full border",
+                            selected
+                              ? "border-accent bg-accent text-white"
+                              : "border-line-strong bg-surface",
+                          )}
+                        >
+                          {selected && <Check className="size-2.5" />}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[12px] font-medium">
+                        {item.label}
+                      </p>
+                      <p className="mt-0.5 hidden font-mono text-[9px] tracking-[0.04em] text-faint uppercase sm:block">
+                        {item.provider}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Message */}
+            <section className="panel overflow-hidden">
+              <div className="flex items-center justify-between border-b border-line px-5 py-4 sm:px-6">
+                <h2 className="text-[14px] font-semibold">Message</h2>
+                <span className="font-mono text-[10px] text-faint">
+                  {usingSampleTemplates
+                    ? "Sample templates"
+                    : templatesPending
+                      ? "Loading templates"
+                      : templateOptions.length
+                        ? meta.provider
+                        : "No live templates"}
+                </span>
+              </div>
+
+              <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                {usingSampleTemplates && (
+                  <div className="sm:col-span-2 rounded-lg border border-warn/30 bg-warn/[0.05] px-3 py-2.5 text-[11px] leading-relaxed text-muted">
+                    Live templates could not be loaded for {meta.label}, so
+                    sample templates are shown. Sending is disabled until the
+                    API returns a real template.
+                  </div>
+                )}
+                {!templatesPending &&
+                  !usingSampleTemplates &&
+                  templateOptions.length === 0 && (
+                    <div className="sm:col-span-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted">
+                      No live templates are available for {meta.label}. Create
+                      one through the API or Django admin before sending.
+                    </div>
+                  )}
+                <div>
+                  <FieldLabel htmlFor={`${ids}-template`} hint="Required">
+                    Template
+                  </FieldLabel>
+                  <div className="relative">
+                    <select
+                      id={`${ids}-template`}
+                      value={effectiveTemplate?.name ?? ""}
+                      onChange={(event) => selectTemplate(event.target.value)}
+                      className="select pr-9 appearance-none"
+                    >
+                      {templateOptions.length === 0 && (
+                        <option value="">
+                          {templatesPending
+                            ? "Loading templates…"
+                            : "No live templates"}
+                        </option>
+                      )}
+                      {templateOptions.map((template) => (
+                        <option key={template.name} value={template.name}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2 text-faint" />
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel
+                    htmlFor={`${ids}-recipient`}
+                    hint={
+                      channel === "email"
+                        ? "Email address"
+                        : channel === "sms"
+                          ? "E.164 phone"
+                          : "Device token"
+                    }
+                  >
+                    Recipient
+                  </FieldLabel>
+                  <input
+                    id={`${ids}-recipient`}
+                    value={recipient}
+                    onChange={(event) => setRecipient(event.target.value)}
+                    placeholder={CHANNEL_DEFAULTS[channel]}
+                    className="input font-mono text-[12px]"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel htmlFor={`${ids}-user`} hint="Internal ID">
+                    User
+                  </FieldLabel>
+                  <input
+                    id={`${ids}-user`}
+                    value={userId}
+                    onChange={(event) => setUserId(event.target.value)}
+                    placeholder="user_9918"
+                    className="input font-mono text-[12px]"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel htmlFor={`${ids}-priority`} hint="Queue">
+                    Priority
+                  </FieldLabel>
+                  <div
+                    id={`${ids}-priority`}
+                    className="grid h-11 grid-cols-2 rounded-lg border border-line bg-surface p-0.5"
+                  >
+                    {(["high", "low"] as const).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPriorityOverride(value)}
+                        aria-pressed={priority === value}
+                        className={cn(
+                          "rounded-md text-[11px] font-medium capitalize transition-colors",
+                          priority === value
+                            ? "bg-ink text-white"
+                            : "text-muted hover:text-ink",
+                        )}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor={`${ids}-title`}
+                    hint="Push title / subject"
+                  >
+                    Title
+                  </FieldLabel>
+                  <input
+                    id={`${ids}-title`}
+                    value={title}
+                    onChange={(event) => setTitleOverride(event.target.value)}
+                    placeholder="Template subject"
+                    className="input"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FieldLabel htmlFor={`${ids}-body`} hint="Plain text">
+                    Body
+                  </FieldLabel>
+                  <textarea
+                    id={`${ids}-body`}
+                    value={body}
+                    onChange={(event) => setBodyOverride(event.target.value)}
+                    placeholder="Template body"
+                    className="textarea min-h-24"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Advanced */}
+            <details className="panel group overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 outline-none sm:px-6">
+                <div className="flex items-center gap-2.5">
+                  <SlidersHorizontal className="size-4 text-faint" />
+                  <div>
+                    <p className="text-[13px] font-medium">
+                      Template variables
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      Optional JSON passed to the template renderer.
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown className="size-4 text-faint transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="border-t border-line p-5 sm:p-6">
+                <textarea
+                  value={contextJson}
+                  onChange={(event) => setContextOverride(event.target.value)}
+                  spellCheck={false}
+                  aria-label="Template variables JSON"
+                  className="textarea min-h-36 font-mono text-[11px] leading-relaxed"
+                />
+                <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                  Values are stringified before sending. The preview substitutes
+                  simple placeholders; the API renders the real request with the
+                  same variables and rejects unknown ones.
+                </p>
+              </div>
+            </details>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <button
-              onClick={() => {
-                alert(
-                  "Simulated Dry Run: Payload conforms to schema v2.4. Projected delivery 28ms without error.",
-                );
-              }}
-              className="px-4 py-2.5 rounded-xl bg-surface hover:bg-card border border-line text-xs font-mono text-muted hover:text-white transition-colors"
-            >
-              Simulate Dry Run [Sandbox]
-            </button>
+          {/* Preview rail */}
+          <div className="space-y-4 lg:sticky lg:top-24 lg:col-span-5">
+            <section className="panel overflow-hidden">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3.5">
+                <h2 className="text-[13px] font-semibold">Preview</h2>
+                <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.08em] text-faint uppercase">
+                  <span className="dot" style={{ background: meta.color }} />
+                  {meta.label}
+                </span>
+              </div>
 
-            <button
-              onClick={handleDispatch}
-              disabled={sendMutation.isPending}
-              className="btn-glow flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-bright text-pitch font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_24px_rgba(254,88,36,0.4)] disabled:opacity-60"
-            >
-              {sendMutation.isPending ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin fill-pitch" />
-                  <span>Enqueuing Packet...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 fill-pitch" />
-                  <span>Dispatch Signal Immediately</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              <div className="bg-surface-2/70 p-4 sm:p-5">
+                {channel === "email" && (
+                  <div className="overflow-hidden rounded-xl border border-line bg-surface">
+                    <div className="border-b border-line px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <PulseMark className="size-4 text-accent" />
+                        <span className="font-display text-[13px] font-semibold">
+                          Pulse
+                        </span>
+                        <span className="ml-auto font-mono text-[9px] text-faint">
+                          now
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[11px] text-muted">
+                        Pulse &lt;DEFAULT_FROM_EMAIL&gt;
+                      </p>
+                      <p className="mt-0.5 text-[13px] font-medium">
+                        {previewTitle || "Your subject line"}
+                      </p>
+                    </div>
+                    <div className="px-4 py-4">
+                      <p className="text-[12px] leading-relaxed whitespace-pre-line text-muted">
+                        {previewBody || "Your message body will appear here."}
+                      </p>
+                      <div className="mt-4 border-t border-line pt-3 text-[10px] text-faint">
+                        Sent by Pulse
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {channel === "push" && (
+                  <div className="rounded-xl bg-ink p-3 shadow-[0_18px_40px_-24px_rgba(23,24,22,0.55)]">
+                    <div className="flex items-center justify-between px-1 pb-2 font-mono text-[9px] text-white/60">
+                      <span>now</span>
+                      <span className="flex items-center gap-1">
+                        <span className="dot bg-accent" /> Pulse
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.07] p-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent text-white">
+                          <PulseMark className="size-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-medium text-white/90">
+                            {previewTitle || "Notification title"}
+                          </p>
+                          <p className="mt-0.5 line-clamp-3 text-[11px] leading-relaxed text-white/60">
+                            {previewBody ||
+                              "Your message body will appear here."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="px-1 pt-2 text-right font-mono text-[9px] text-white/55">
+                      Push · {priority} priority
+                    </p>
+                  </div>
+                )}
+
+                {channel === "sms" && (
+                  <div className="rounded-xl border border-line bg-surface p-4">
+                    <div className="flex items-center gap-2 border-b border-line pb-3">
+                      <span className="flex size-7 items-center justify-center rounded-full border border-line bg-surface-2">
+                        <MessageSquareText className="size-3.5 text-faint" />
+                      </span>
+                      <div>
+                        <p className="text-[11px] font-medium">Pulse</p>
+                        <p className="font-mono text-[9px] text-faint">
+                          {recipient || "+1 ••• ••• ••••"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-br-md bg-ink px-3.5 py-2.5 text-[12px] leading-relaxed text-white">
+                        {previewBody || "Your message body will appear here."}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-right font-mono text-[9px] text-faint">
+                      SMS · via Twilio
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-line px-4 py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="label">Idempotency key</span>
+                  <div className="flex items-center gap-1">
+                    <span className="max-w-40 truncate font-mono text-[10px] text-muted">
+                      {idempotencyKey || "generating…"}
+                    </span>
+                    {idempotencyKey && (
+                      <CopyButton
+                        value={idempotencyKey}
+                        label=""
+                        className="px-1.5 py-1 text-faint hover:text-ink"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-4">
+                  <span className="label">Request</span>
+                  <span className="font-mono text-[10px] text-muted">
+                    {channel.toUpperCase()} · {priority.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-line p-4">
+                <button
+                  type="submit"
+                  disabled={
+                    pending ||
+                    templatesPending ||
+                    usingSampleTemplates ||
+                    !effectiveTemplate
+                  }
+                  className="btn btn-primary w-full"
+                >
+                  {pending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  {pending ? "Dispatching…" : "Send notification"}
+                </button>
+                <p className="mt-2.5 text-center text-[10px] leading-relaxed text-faint">
+                  {usingSampleTemplates
+                    ? "Sample templates cannot be sent. Create a live template for this channel first."
+                    : templatesPending
+                      ? "Loading live templates for this channel."
+                      : !effectiveTemplate
+                        ? "No live template is available for this channel."
+                        : "The request is validated and persisted before it is queued."}
+                </p>
+              </div>
+            </section>
+
+            <details className="panel group overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5">
+                <span className="flex items-center gap-2 text-[12px] font-medium">
+                  <KeyRound className="size-3.5 text-faint" />
+                  Request preview
+                </span>
+                <div className="flex items-center gap-2">
+                  <CopyButton
+                    value={requestPreview}
+                    label="Copy JSON"
+                    className="text-faint hover:text-ink"
+                  />
+                  <ChevronDown className="size-3.5 text-faint transition-transform group-open:rotate-180" />
+                </div>
+              </summary>
+              <pre className="max-h-72 overflow-auto border-t border-line bg-ink p-4 font-mono text-[10px] leading-relaxed text-white/65">
+                {requestPreview}
+              </pre>
+            </details>
           </div>
-        </div>
+        </form>
       </div>
     </ConsoleShell>
   );

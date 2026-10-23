@@ -1,37 +1,44 @@
 @import "tailwindcss";
 
 /*
- * Pulse design system — extracted from the Stitch "Phenomenon Edition" screens.
- * Pitch-black surfaces, a single orange brand accent, and channel accents
- * (cyan = email, violet = sms, orange = push) used consistently in data viz.
+ * Pulse design system — "Instrument".
+ *
+ * A quiet, editorial operations console: porcelain canvas, ink type,
+ * hairline structure, one signal accent. No glass, no glow, no gradient
+ * decoration. Depth comes from rules, spacing and typography.
  */
+
 @theme {
   /* Surfaces */
-  --color-pitch: #070809;
-  --color-surface: #0d0e11;
-  --color-card: #131418;
-  --color-card-hover: #1a1c22;
-  --color-elevated: #1e2026;
-  --color-line: #21242c;
-  --color-line-subtle: #171920;
-
-  /* Brand */
-  --color-brand: #fe5824;
-  --color-brand-bright: #ff6a38;
-  --color-brand-deep: #c2410c;
+  --color-canvas: oklch(97.8% 0.004 110); /* #f6f7f4 */
+  --color-surface: oklch(100% 0 0); /* #ffffff */
+  --color-surface-2: oklch(95.2% 0.006 120); /* #eef0ea */
+  --color-ink: oklch(19% 0.005 120); /* #171816 */
+  --color-ink-2: oklch(27% 0.006 110); /* #2a2b27 */
 
   /* Text */
-  --color-fg: #f2f3f5;
-  --color-muted: #8d929d;
-  --color-subtle: #575c68;
+  --color-muted: oklch(48% 0.008 120); /* #62655f */
+  --color-faint: oklch(51% 0.008 120); /* #6c6f67 */
 
-  /* Channel / status accents */
-  --color-email: #22d3ee;
-  --color-sms: #a78bfa;
-  --color-push: #fe5824;
-  --color-ok: #34d399;
-  --color-warn: #fbbf24;
-  --color-err: #f87171;
+  /* Structure */
+  --color-line: oklch(91% 0.006 120); /* #e2e4de */
+  --color-line-strong: oklch(84% 0.008 120); /* #cfd2ca */
+
+  /* Signal accent — vermilion, used sparingly */
+  --color-accent: oklch(57% 0.18 35); /* #d94a2b */
+  --color-accent-ink: oklch(48% 0.16 35); /* #b23a1f */
+  --color-accent-bright: oklch(72% 0.15 35); /* #ff7a5c */
+  --color-accent-soft: oklch(96% 0.02 35); /* #fbeee9 */
+
+  /* Status */
+  --color-ok: oklch(50% 0.12 155); /* #1f7a4d */
+  --color-warn: oklch(55% 0.12 75); /* #9a6700 */
+  --color-err: oklch(50% 0.18 27); /* #b42318 */
+
+  /* Channels */
+  --color-push: oklch(57% 0.18 35); /* #d94a2b */
+  --color-email: oklch(51% 0.08 235); /* #3f6f8f */
+  --color-sms: oklch(55% 0.1 75); /* #9a6b2f */
 
   /* Type */
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
@@ -39,104 +46,183 @@
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 
   /* Motion */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
-  --animate-dash: dash 1.4s linear infinite;
-  --animate-marquee: marquee 40s linear infinite;
-  --animate-float: float 6s ease-in-out infinite;
-  --animate-scan: scan 3.2s ease-in-out infinite;
-
-  @keyframes dash {
-    to {
-      stroke-dashoffset: -24;
-    }
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  @keyframes marquee {
-    to {
-      transform: translateX(-50%);
-    }
-  }
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-  @keyframes scan {
-    0% {
-      transform: translateY(-100%);
-    }
-    100% {
-      transform: translateY(400%);
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-pitch text-fg font-sans antialiased;
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1;
   }
   ::selection {
-    @apply bg-brand text-white;
+    background: var(--color-accent);
+    color: white;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-line) transparent;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 
 @layer components {
-  /* Radial-lit card with hairline border — the core "Phenomenon" surface. */
-  .ph-card {
-    background: radial-gradient(120% 120% at 50% 0%, #15171d 0%, #0d0e12 100%);
-    border: 1px solid rgb(255 255 255 / 0.07);
-    transition:
-      border-color 0.4s var(--ease-out-expo),
-      box-shadow 0.4s var(--ease-out-expo),
-      transform 0.4s var(--ease-out-expo);
-  }
-  .ph-card-hover:hover {
-    border-color: rgb(254 88 36 / 0.45);
-    box-shadow:
-      0 20px 40px -15px rgb(0 0 0 / 0.9),
-      0 0 35px -5px rgb(254 88 36 / 0.16);
+  /* ---- Structure -------------------------------------------------------- */
+
+  .panel {
+    @apply rounded-2xl border border-line bg-surface;
   }
 
-  /* Glowing primary button. */
-  .btn-glow {
-    box-shadow:
-      0 0 25px -4px rgb(254 88 36 / 0.65),
-      inset 0 1px 0 rgb(255 255 255 / 0.3);
-    transition: all 0.3s var(--ease-out-expo);
-  }
-  .btn-glow:hover {
-    box-shadow:
-      0 0 40px 2px rgb(254 88 36 / 0.75),
-      0 0 70px 10px rgb(254 88 36 / 0.2);
+  .ink-panel {
+    @apply rounded-2xl bg-ink text-[#f3f3ef];
   }
 
-  .grid-bg {
+  .rule {
+    @apply border-t border-line;
+  }
+
+  .label {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-faint;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium tracking-[0.01em] text-faint;
+  }
+
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+
+  .stat {
+    @apply font-display text-[2.15rem] leading-none font-semibold tracking-[-0.045em] tabular-nums sm:text-[2.5rem];
+  }
+
+  /* ---- Controls -------------------------------------------------------- */
+
+  .btn {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium whitespace-nowrap transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-sm {
+    @apply h-9 gap-1.5 rounded-md px-3 text-[13px];
+  }
+
+  .btn-primary {
+    @apply bg-ink text-white hover:bg-ink-2;
+  }
+
+  .btn-secondary {
+    @apply border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2;
+  }
+
+  .btn-ghost {
+    @apply text-muted hover:bg-surface-2 hover:text-ink;
+  }
+
+  .btn-accent {
+    @apply bg-accent-ink text-white hover:bg-ink;
+  }
+
+  .input {
+    @apply h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink transition-colors placeholder:text-faint focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-accent/15;
+  }
+
+  .textarea {
+    @apply min-h-28 w-full resize-y rounded-lg border border-line bg-surface px-3 py-2.5 text-sm leading-relaxed text-ink transition-colors placeholder:text-faint focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-accent/15;
+  }
+
+  .select {
+    @apply h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-accent/15;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.06em] whitespace-nowrap text-muted uppercase;
+  }
+
+  .kbd {
+    @apply rounded border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-muted;
+  }
+
+  .range {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line;
+  }
+
+  .range::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: var(--color-ink);
+    border: 2px solid var(--color-surface);
+    box-shadow: 0 0 0 1px var(--color-line-strong);
+  }
+
+  .range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--color-ink);
+    border: 2px solid var(--color-surface);
+    box-shadow: 0 0 0 1px var(--color-line-strong);
+  }
+
+  .dot {
+    @apply inline-block size-1.5 shrink-0 rounded-full;
+  }
+
+  .link {
+    @apply text-accent-ink underline decoration-accent/30 underline-offset-4 transition-colors hover:decoration-accent;
+  }
+
+  /* ---- Texture --------------------------------------------------------- */
+
+  .grid-paper {
     background-image: linear-gradient(
         to right,
-        rgb(255 255 255 / 0.03) 1px,
+        var(--color-line) 1px,
         transparent 1px
       ),
-      linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
-    background-size: 64px 64px;
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
-  .label-caps {
-    @apply font-mono text-[10px] font-semibold tracking-[0.14em] uppercase;
+  .reveal {
+    animation: rise 0.7s var(--ease-out) both;
+  }
+}
+
+@media (min-width: 64rem) {
+  .logs-filters {
+    flex-direction: row;
+    align-items: center;
   }
 }
 
@@ -147,5 +233,6 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

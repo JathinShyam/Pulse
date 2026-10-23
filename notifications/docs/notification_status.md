@@ -1,24 +1,14 @@
 # Notification Status API
 
-## Endpoint
+Canonical reference: [`docs/api_documentation.md`](../../docs/api_documentation.md#status-list-and-templates).
 
+```http
+GET /api/notifications/status/{uuid}/
+X-API-Key: <key>
 ```
-GET /api/notifications/status/{notification_id}/
-```
 
-## Description
-
-Retrieve the current status and metadata of a specific notification by its UUID.
-
-## Path Parameters
-
-| Parameter         | Type | Description                           |
-| ----------------- | ---- | ------------------------------------- |
-| `notification_id` | UUID | Unique identifier of the notification |
-
-## Response Schema
-
-### Success (200 OK)
+Reads are scoped to the caller. A row outside the caller's scope returns `404`
+rather than `403`, so existence is not leaked.
 
 ```json
 {
@@ -26,59 +16,33 @@ Retrieve the current status and metadata of a specific notification by its UUID.
   "user_id": "user_123",
   "template_name": "welcome_email",
   "channel": "email",
-  "to": "john@example.com",
+  "to": "ada@example.com",
   "status": "sent",
   "attempts": 1,
   "max_retries": 5,
-  "created_at": "2024-12-15T10:30:00.000000Z",
-  "sent_at": "2024-12-15T10:30:05.123456Z",
-  "last_attempt_at": "2024-12-15T10:30:05.123456Z",
+  "created_at": "2026-10-22T10:30:00+00:00",
+  "sent_at": "2026-10-22T10:30:05+00:00",
+  "last_attempt_at": "2026-10-22T10:30:05+00:00",
   "next_retry_at": null,
   "error_message": null,
   "provider_config": {},
-  "idempotency_key": "welcome-user_123-2024"
+  "idempotency_key": "welcome-user_123-1"
 }
 ```
 
-### Not Found (404 Not Found)
+`provider_config` contains provider metadata such as a Twilio SID. For the
+console push backend it includes `simulated: true`.
 
-```json
-{
-  "error": "Notification not found"
-}
-```
+## Status values
 
-## Response Fields
+| Status     | Meaning                                                    |
+| ---------- | ---------------------------------------------------------- |
+| `pending`  | Persisted, not yet claimed by a worker                     |
+| `sending`  | Claimed by a worker and in progress                        |
+| `retrying` | An attempt failed and a bounded retry is scheduled         |
+| `sent`     | The configured provider acknowledged the call              |
+| `failed`   | Terminal failure; retry budget exhausted or enqueue failed |
 
-| Field             | Type              | Description                                             |
-| ----------------- | ----------------- | ------------------------------------------------------- |
-| `notification_id` | string (UUID)     | Unique identifier                                       |
-| `user_id`         | string            | Target user identifier                                  |
-| `template_name`   | string            | Template used for this notification                     |
-| `channel`         | string            | Delivery channel (`email`, `sms`, `push`)               |
-| `to`              | string            | Destination address                                     |
-| `status`          | string            | Current status (see below)                              |
-| `attempts`        | integer           | Number of delivery attempts made                        |
-| `max_retries`     | integer           | Maximum retry attempts allowed                          |
-| `created_at`      | string (ISO 8601) | When the notification was created                       |
-| `sent_at`         | string (ISO 8601) | When successfully delivered (null if not sent)          |
-| `last_attempt_at` | string (ISO 8601) | Timestamp of the most recent attempt                    |
-| `next_retry_at`   | string (ISO 8601) | When the next retry is scheduled (null if not retrying) |
-| `error_message`   | string            | Error details if failed (null otherwise)                |
-| `provider_config` | object            | Provider-specific metadata (e.g., Twilio SID)           |
-| `idempotency_key` | string            | Idempotency key if provided                             |
-
-## Status Values
-
-| Status     | Description                                   |
-| ---------- | --------------------------------------------- |
-| `pending`  | Notification created, waiting to be processed |
-| `sent`     | Successfully delivered                        |
-| `failed`   | Delivery failed after all retry attempts      |
-| `retrying` | Delivery failed, scheduled for retry          |
-
-## Example Usage
-
-```bash
-curl -X GET http://localhost:8000/api/notifications/status/550e8400-e29b-41d4-a716-446655440000/
-```
+`sent` is not a human read/delivery receipt. A `sending` row can be reclaimed by
+another worker only after `NOTIFICATION_CLAIM_TIMEOUT_SECONDS`; `sent` and
+`failed` are terminal and are not overwritten by duplicate Celery deliveries.

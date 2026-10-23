@@ -15,6 +15,7 @@ SECRET_KEY must be supplied when DEBUG is off.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -44,6 +45,13 @@ def env_int(name: str, default: int) -> int:
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Test runs are allowed to use plain HTTP and the test client host. This is
+# deliberately narrow: it only changes defaults, every production default is
+# still exercised by `manage.py check --deploy`.
+TESTING = "pytest" in sys.modules or any(arg == "test" for arg in sys.argv)
+
+PULSE_VERSION = os.environ.get("PULSE_VERSION", "1.1.0").strip() or "1.1.0"
 
 
 # Quick-start development settings - unsuitable for production
@@ -145,13 +153,21 @@ REDIS_URL = os.environ.get(
     "REDIS_URL", os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
 )
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+if TESTING:
+    # Tests must not require a running Redis just to exercise DRF throttles.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+        }
+    }
 
 
 # Password validation
@@ -189,7 +205,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 # Served by WhiteNoise so the admin works with DEBUG off and no extra web server.
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -206,17 +222,25 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Security (effective when DEBUG is off)
 # =============================================================================
 
-# Set TRUST_X_FORWARDED_PROTO=true only when running behind a reverse proxy /
-# PaaS router that sets X-Forwarded-Proto (Caddy, nginx, Render, Fly, ...).
-if env_bool("TRUST_X_FORWARDED_PROTO", False):
+# Production deployments terminate TLS at a proxy (ingress, Caddy, nginx,
+# Render, Fly, ...). Trust its X-Forwarded-Proto header unless explicitly
+# disabled; local DEBUG servers do not get the header and keep working.
+if env_bool("TRUST_X_FORWARDED_PROTO", not DEBUG):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
-SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 0)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
-SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+# Fail closed in production: force HTTPS and advertise HSTS. Tests and local
+# DEBUG runs are exempt, and operators can opt out for a private HTTP network.
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", not DEBUG and not TESTING)
+SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 0 if DEBUG else 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", not DEBUG)
 CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", not DEBUG)
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 256 * 1024  # API payloads are small JSON bodies
@@ -227,9 +251,18 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 256 * 1024  # API payloads are small JSON bodies
 # =============================================================================
 
 # Comma-separated list of accepted API keys. Clients send `X-API-Key: <key>`
-# (or `Authorization: Api-Key <key>`). If empty, the API is open ONLY when
-# DEBUG is on; with DEBUG off every request is rejected (fail closed).
+# (or `Authorization: Api-Key <key>`). If empty, every API-key request is
+# rejected (fail closed); the console still authenticates with JWT. There is no
+# DEBUG bypass.
 PULSE_API_KEYS = env_list("PULSE_API_KEYS")
+
+# Self-service registration is opt-in. Accounts should normally be created by
+# an administrator (Django admin or `createsuperuser`).
+ALLOW_REGISTRATION = env_bool("ALLOW_REGISTRATION", False)
+REGISTRATION_THROTTLE_RATE = os.environ.get(
+    "REGISTRATION_THROTTLE_RATE", "5/hour"
+).strip()
+LOGIN_THROTTLE_RATE = os.environ.get("LOGIN_THROTTLE_RATE", "10/min").strip()
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
@@ -243,18 +276,23 @@ REST_FRAMEWORK = {
         "notifications.authentication.APIKeyAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "notifications.authentication.HasAPIKeyOrDevMode",
+        "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "register": REGISTRATION_THROTTLE_RATE,
+        "login": LOGIN_THROTTLE_RATE,
+    },
     "UNAUTHENTICATED_USER": None,
 }
 
-# Optional per-client (IP) throttle across the whole API, e.g. "300/min".
+# Optional per-client throttle across the whole API, e.g. "300/min". This is
+# separate from the per-caller/target-user Redis send limiter.
 API_THROTTLE_RATE = os.environ.get("API_THROTTLE_RATE", "").strip()
 if API_THROTTLE_RATE:
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = [
-        "rest_framework.throttling.AnonRateThrottle"
+        "notifications.authentication.ClientRateThrottle"
     ]
-    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {"anon": API_THROTTLE_RATE}
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["client"] = API_THROTTLE_RATE
 
 # Add schema class if docs are enabled
 if ENABLE_DOCS:
@@ -266,12 +304,8 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "A scalable notification and background job orchestration system. "
     "Supports multi-channel delivery (email, SMS, push), retries with exponential backoff, "
     "idempotency keys, rate limiting, and priority queues.",
-    "VERSION": "1.1.0",
+    "VERSION": PULSE_VERSION,
     "SERVE_INCLUDE_SCHEMA": False,
-    "CONTACT": {
-        "name": "Pulse API Support",
-        "email": "pulse@shyamk.red",
-    },
     "LICENSE": {
         "name": "MIT",
     },
@@ -289,6 +323,9 @@ RATE_LIMIT_MAX_REQUESTS = env_int("RATE_LIMIT_MAX_REQUESTS", 10)
 RATE_LIMIT_WINDOW_SECONDS = env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
 NOTIFICATION_MAX_RETRIES = env_int("NOTIFICATION_MAX_RETRIES", 5)
 NOTIFICATION_RETRY_BASE_DELAY = env_int("NOTIFICATION_RETRY_BASE_DELAY", 60)
+# A worker that dies mid-delivery leaves a row in "sending"; after this long
+# another worker may claim it again. Must exceed CELERY_TASK_TIME_LIMIT.
+NOTIFICATION_CLAIM_TIMEOUT_SECONDS = env_int("NOTIFICATION_CLAIM_TIMEOUT_SECONDS", 900)
 HIGH_PRIORITY_TEMPLATE_KEYWORDS = env_list(
     "HIGH_PRIORITY_TEMPLATE_KEYWORDS", "otp,verification,verify,2fa"
 )

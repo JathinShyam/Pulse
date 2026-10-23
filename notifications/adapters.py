@@ -38,7 +38,7 @@ class SMSAdapter(BaseChannelAdapter):
 class PushAdapter(BaseChannelAdapter):
     def send(self, log_id, payload):
         queue = payload.get("queue") or "low_priority"
-        # For now, dummy Firebase — replace with real later
+        # The task selects FCM or the simulated console backend from settings.
         send_push_task.apply_async(
             args=[log_id, payload["device_token"], payload["title"], payload["body"]],
             queue=queue,

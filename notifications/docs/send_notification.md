@@ -1,113 +1,55 @@
 # Send Notification API
 
-## Endpoint
+Canonical reference: [`docs/api_documentation.md`](../../docs/api_documentation.md#send-a-notification).
 
-```
+```http
 POST /api/notifications/send/
+X-API-Key: <key>
+Content-Type: application/json
 ```
-
-## Description
-
-Queue a notification for delivery via email, SMS, or push. Supports idempotency keys for exactly-once semantics and automatic priority routing based on template type.
-
-## Request Schema
-
-| Field             | Type   | Required | Description                                                |
-| ----------------- | ------ | -------- | ---------------------------------------------------------- |
-| `template_name`   | string | Yes      | Name of the notification template to use                   |
-| `user_id`         | string | Yes      | Unique identifier of the target user                       |
-| `to`              | string | Yes      | Destination address (email, phone number, or device token) |
-| `context`         | object | No       | Key-value pairs for template variable substitution         |
-| `idempotency_key` | string | No       | Unique key to prevent duplicate sends                      |
-| `channel`         | string | No       | Override channel: `email`, `sms`, or `push`                |
-| `device_token`    | string | No       | Required for push notifications                            |
-| `title`           | string | No       | Push notification title override                           |
-
-### Example Request
 
 ```json
 {
   "template_name": "welcome_email",
   "user_id": "user_123",
-  "to": "john@example.com",
-  "context": {
-    "name": "John",
-    "activation_link": "https://example.com/activate/abc123"
-  },
-  "idempotency_key": "welcome-user_123-2024"
+  "to": "ada@example.com",
+  "channel": "email",
+  "context": { "name": "Ada" },
+  "idempotency_key": "welcome-user_123-1",
+  "priority": "low"
 }
 ```
 
-## Response Schema
+`channel` defaults to the template channel and must be `email`, `sms` or
+`push`. Email recipients must be valid addresses; SMS recipients must be E.164
+numbers; push uses the recipient or `device_token`. Optional `subject`, `body`
+and `title` values override the template. Missing template variables are a
+validation error.
 
-### Success (202 Accepted)
+`priority` is `high` or `low`. When omitted, the request is high priority if the
+template name contains one of `HIGH_PRIORITY_TEMPLATE_KEYWORDS` (default
+`otp,verification,verify,2fa`); otherwise it is low priority. There is no
+automatic channel fallback.
 
-```json
-{
-  "notification_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "queued"
-}
-```
+## Responses
 
-### Idempotent Hit (200 OK)
+| Status | Meaning                                                            |
+| ------ | ------------------------------------------------------------------ |
+| `202`  | New row persisted and queued with `status: "queued"`               |
+| `200`  | Same idempotency key and same request; returns the existing status |
+| `400`  | Invalid template, recipient, context, priority or query parameter  |
+| `401`  | Missing or invalid credential                                      |
+| `409`  | Idempotency key reused with a different request                    |
+| `429`  | Send limit exceeded; see `Retry-After`                             |
+| `503`  | Broker unavailable; row marked `failed`                            |
 
-Returned when the same `idempotency_key` is used again:
+Idempotency covers acceptance, not delivery. The key is unique and a SHA-256
+fingerprint of the request is stored; reusing a key with any changed field is a
+conflict. After a `503`, retry with a new idempotency key once the broker is
+available.
 
-```json
-{
-  "notification_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "sent"
-}
-```
-
-### Rate Limited (429 Too Many Requests)
-
-```json
-{
-  "error": "Rate limit exceeded. Try again later."
-}
-```
-
-### Validation Error (400 Bad Request)
-
-```json
-{
-  "template_name": ["Template not found"],
-  "context": ["missing template variable: 'name'"]
-}
-```
-
-### Server Error (500 Internal Server Error)
-
-```json
-{
-  "error": "Connection to email server failed"
-}
-```
-
-## Rate Limiting
-
-- **Limit**: 10 requests per 60 seconds
-- **Scope**: Per `(user_id, channel)` combination
-- **Storage**: Redis-backed fixed-window counter
-
-## Priority Routing
-
-| Template Name Contains   | Queue           |
-| ------------------------ | --------------- |
-| `otp` (case-insensitive) | `high_priority` |
-| Everything else          | `low_priority`  |
-
-## Idempotency
-
-When `idempotency_key` is provided:
-
-1. If a notification with the same key exists, the existing notification's status is returned
-2. Race conditions are handled atomically at the database level
-3. Keys are unique across all notifications
-
-## Notes
-
-- Notifications are processed asynchronously via Celery workers
-- Status transitions: `pending` → `sent` | `retrying` → `sent` | `failed`
-- Failed notifications retry up to 5 times with exponential backoff
+Delivery is asynchronous. `202` and `sent` do not mean a human received the
+message. Retries are bounded, stay on the same channel and may still end in
+`failed`. Delivery is at-least-once in a narrow crash window after provider
+acknowledgement; idempotency covers API acceptance, not provider-side
+duplicates.

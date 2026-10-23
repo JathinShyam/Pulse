@@ -1,137 +1,67 @@
-# Pulse Notification API Documentation
+# Notification API (component notes)
 
-## Overview
+The canonical API reference is
+[`docs/api_documentation.md`](../../docs/api_documentation.md). The OpenAPI
+schema is generated at `/api/schema/` when `ENABLE_DOCS=True`; Swagger UI is at
+`/api/docs/`.
 
-Pulse is a scalable notification and background job orchestration system. This documentation covers all available API endpoints for sending and managing notifications.
-
-## Base URL
-
-```
-http://localhost:8000/api/
-```
+These component notes describe the same endpoints and are kept deliberately
+short to avoid drifting from the implementation.
 
 ## Authentication
 
-Currently, the API does not require authentication. This is suitable for development; production deployments should add appropriate authentication.
+Every data endpoint requires either:
 
-## Interactive Documentation
+- `X-API-Key: <key>` (or `Authorization: Api-Key <key>`), or
+- `Authorization: Bearer <JWT access token>`.
 
-When `ENABLE_DOCS=true` (default), interactive API documentation is available:
+No data endpoint has an anonymous or development bypass. `Bearer` is reserved for JWTs.
+Browser sessions keep JWTs in httpOnly cookies and go through the Next.js
+proxy; server-to-server clients use an API key from `PULSE_API_KEYS`.
 
-| URL            | Description                              |
-| -------------- | ---------------------------------------- |
-| `/api/docs/`   | Swagger UI - Interactive API explorer    |
-| `/api/redoc/`  | ReDoc - Alternative documentation viewer |
-| `/api/schema/` | OpenAPI 3.0 schema (JSON/YAML)           |
+Reads are scoped. An API key sees rows created by that key, a non-staff JWT
+user sees rows they created, and staff users see the installation. Templates
+are installation-wide.
 
-## API Endpoints
+## Endpoints
 
-### Notifications
+| Method | Endpoint                               | Notes                                          |
+| ------ | -------------------------------------- | ---------------------------------------------- |
+| `POST` | `/api/notifications/send/`             | Validate, persist and enqueue one notification |
+| `GET`  | `/api/notifications/status/{uuid}/`    | Scoped status and trace metadata               |
+| `GET`  | `/api/notifications/list/`             | Scoped list; `limit` 1–200                     |
+| `GET`  | `/api/notifications/templates/`        | Optional `channel=email\|sms\|push`            |
+| `GET`  | `/api/notifications/templates/{uuid}/` | One template                                   |
+| `GET`  | `/api/metrics?window=1h\|24h\|7d\|30d` | Caller-scoped windowed metrics                 |
+| `GET`  | `/health/`                             | Process liveness                               |
+| `GET`  | `/readyz/`                             | PostgreSQL and Redis readiness                 |
 
-| Method | Endpoint                          | Description             | Documentation                                    |
-| ------ | --------------------------------- | ----------------------- | ------------------------------------------------ |
-| `POST` | `/api/notifications/send/`        | Queue a notification    | [send_notification.md](send_notification.md)     |
-| `GET`  | `/api/notifications/status/{id}/` | Get notification status | [notification_status.md](notification_status.md) |
-| `GET`  | `/api/notifications/list/`        | List notifications      | [notification_list.md](notification_list.md)     |
+## Channels and status
 
-### Templates
+Supported delivery channels are `email` via SMTP, `sms` via Twilio and `push`
+via FCM. `PUSH_BACKEND=console` simulates push and flags the trace; it does not
+send a live notification. WhatsApp and in-app templates are not sendable.
 
-| Method | Endpoint                             | Description          | Documentation                            |
-| ------ | ------------------------------------ | -------------------- | ---------------------------------------- |
-| `GET`  | `/api/notifications/templates/`      | List all templates   | [template_list.md](template_list.md)     |
-| `GET`  | `/api/notifications/templates/{id}/` | Get template details | [template_detail.md](template_detail.md) |
+Status values are `pending`, `sending`, `sent`, `failed` and `retrying`. `sent`
+means the configured provider acknowledged the call. It is not a read receipt.
+Retries stay on the same channel and are bounded; there is no automatic
+fallback or dead-letter queue.
 
-## Common Response Codes
-
-| Code                        | Description                        |
-| --------------------------- | ---------------------------------- |
-| `200 OK`                    | Request successful                 |
-| `202 Accepted`              | Notification queued for processing |
-| `400 Bad Request`           | Invalid request parameters         |
-| `404 Not Found`             | Resource not found                 |
-| `429 Too Many Requests`     | Rate limit exceeded                |
-| `500 Internal Server Error` | Server error                       |
-
-## Rate Limiting
-
-All send requests are rate-limited to **10 requests per minute** per `(user_id, channel)` combination. When exceeded, the API returns `429` with:
-
-```json
-{
-  "error": "Rate limit exceeded. Try again later."
-}
-```
-
-## Idempotency
-
-To ensure exactly-once delivery, include an `idempotency_key` in your send request:
-
-```json
-{
-  "template_name": "welcome_email",
-  "user_id": "user_123",
-  "to": "john@example.com",
-  "context": { "name": "John" },
-  "idempotency_key": "welcome-user_123-20241215"
-}
-```
-
-Duplicate requests with the same key return the existing notification's status instead of creating a new one.
-
-## Priority Queues
-
-Notifications are automatically routed to priority queues:
-
-- **High Priority** (`high_priority`): Templates with "otp" in the name
-- **Low Priority** (`low_priority`): All other notifications
-
-This ensures time-sensitive notifications (like OTPs) are processed before bulk sends.
-
-## Channels
-
-| Channel    | Provider | Status  |
-| ---------- | -------- | ------- |
-| `email`    | SMTP     | Active  |
-| `sms`      | Twilio   | Active  |
-| `push`     | Firebase | Active  |
-| `whatsapp` | -        | Planned |
-| `in_app`   | -        | Planned |
-
-## Quick Start
-
-### 1. Send a notification
+## Quick start
 
 ```bash
-curl -X POST http://localhost:8000/api/notifications/send/ \
+export PULSE_API_KEY="replace-with-a-key-from-PULSE_API_KEYS"
+
+curl -sS -X POST "http://localhost:8000/api/notifications/send/" \
+  -H "X-API-Key: $PULSE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "template_name": "welcome_email",
     "user_id": "user_123",
-    "to": "john@example.com",
-    "context": {"name": "John"}
+    "to": "ada@example.com",
+    "context": {"name": "Ada"},
+    "idempotency_key": "welcome-user_123-1"
   }'
 ```
 
-### 2. Check status
-
-```bash
-curl http://localhost:8000/api/notifications/status/{notification_id}/
-```
-
-### 3. List recent notifications
-
-```bash
-curl "http://localhost:8000/api/notifications/list/?user_id=user_123&limit=10"
-```
-
-## Environment Configuration
-
-| Variable              | Description             | Default                    |
-| --------------------- | ----------------------- | -------------------------- |
-| `ENABLE_DOCS`         | Enable Swagger/ReDoc UI | `true`                     |
-| `DEBUG`               | Django debug mode       | `true`                     |
-| `CELERY_BROKER_URL`   | Redis broker URL        | `redis://localhost:6379/0` |
-| `EMAIL_HOST`          | SMTP server host        | `smtp.mailtrap.io`         |
-| `TWILIO_ACCOUNT_SID`  | Twilio Account SID      | -                          |
-| `TWILIO_AUTH_TOKEN`   | Twilio Auth Token       | -                          |
-| `TWILIO_PHONE_NUMBER` | Twilio sender number    | -                          |
+See [`CURL_COMMANDS.md`](../../CURL_COMMANDS.md) for complete examples.

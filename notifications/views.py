@@ -9,13 +9,16 @@ from rest_framework.views import APIView
 from .adapters import EmailAdapter, PushAdapter, SMSAdapter
 from .models import NotificationLog, NotificationTemplate
 from .rate_limiter import RateLimiter
+from .scoping import principal_scope, scoped_logs
 from .serializers import (
     ErrorResponseSerializer,
     NotificationIdempotentResponseSerializer,
+    NotificationListQuerySerializer,
     NotificationListResponseSerializer,
     NotificationQueuedResponseSerializer,
     NotificationStatusResponseSerializer,
     SendNotificationSerializer,
+    TemplateListQuerySerializer,
     TemplateListResponseSerializer,
     TemplateSerializer,
 )
@@ -44,12 +47,36 @@ logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("pulse.access")
 
 
+def _same_request(log: NotificationLog, *, data: dict, scope: str) -> bool:
+    """Whether an existing idempotent row describes this exact request."""
+    if log.request_fingerprint and data.get("request_fingerprint"):
+        return log.created_by == scope and (
+            log.request_fingerprint == data["request_fingerprint"]
+        )
+    # Rows created before request_fingerprint existed fall back to the fields
+    # that were stored at the time.
+    return (
+        log.created_by == scope
+        and log.user_id == data["user_id"]
+        and log.to == data["to"]
+        and log.template_id == data["template"].id
+        and log.channel == data["channel"]
+    )
+
+
+def _idempotency_conflict() -> Response:
+    return Response(
+        {"error": "This idempotency key was already used for a different request."},
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
 class SendNotificationView(APIView):
     """
     Queue a notification for delivery via email, SMS, or push.
 
-    Supports idempotency keys for exactly-once semantics and automatic
-    priority routing based on template type (OTP templates → high priority).
+    Supports idempotency keys for exactly-once acceptance and priority routing
+    based on an explicit priority or template-name keywords.
     """
 
     serializer_class = SendNotificationSerializer
@@ -64,8 +91,9 @@ class SendNotificationView(APIView):
             202: NotificationQueuedResponseSerializer,
             200: NotificationIdempotentResponseSerializer,
             400: ErrorResponseSerializer,
+            409: ErrorResponseSerializer,
             429: ErrorResponseSerializer,
-            500: ErrorResponseSerializer,
+            503: ErrorResponseSerializer,
         },
     )
     def post(self, request):
@@ -74,134 +102,156 @@ class SendNotificationView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        logger.info(
-            "Received notification request for template=%s user=%s",
-            data["template_name"],
-            data["user_id"],
-        )
-        existing = data.get("existing_log")
-        if existing:
-            logger.info(
-                "Idempotent hit for notification %s (status=%s)",
-                existing.id,
-                existing.status,
-            )
-            response = Response(
-                {"notification_id": str(existing.id), "status": existing.status},
-                status=status.HTTP_200_OK,
-            )
-            self._log_response(
-                request,
-                started_at,
-                response.status_code,
-                extra={"notification_id": str(existing.id)},
-            )
-            return response
-
         template = data["template"]
-        rendered_body = data["rendered_body"]
-        idem_key = data.get("idempotency_key") or None
-        channel = data.get("channel", template.channel)
+        channel = data["channel"]
+        scope = principal_scope(request)
+        idem_key = data.get("idempotency_key")
 
-        # Per-user/channel rate limiting
-        limiter = RateLimiter(max_requests=10, window=60)  # 10 requests/minute
-        rate_key = f"{data['user_id']}:{channel}"
-        if not limiter.is_allowed(rate_key):
-            logger.warning(
-                "Rate limit exceeded for user=%s channel=%s", data["user_id"], channel
-            )
-            response = Response(
-                {"error": "Rate limit exceeded. Try again later."},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-            self._log_response(
-                request,
-                started_at,
-                response.status_code,
-                extra={"user_id": data["user_id"], "channel": channel},
-            )
-            return response
+        logger.info(
+            "Received notification request for template=%s user=%s channel=%s",
+            template.name,
+            data["user_id"],
+            channel,
+        )
 
-        # Use atomic create for idempotency
-        log = NotificationLog.create_if_not_exists(
+        # Fast path for an already-seen key. The atomic create below is still
+        # authoritative; this only avoids consuming rate-limit budget and makes
+        # the common duplicate cheap.
+        if idem_key:
+            existing = NotificationLog.objects.filter(idempotency_key=idem_key).first()
+            if existing:
+                if not _same_request(existing, data=data, scope=scope):
+                    response = _idempotency_conflict()
+                else:
+                    logger.info(
+                        "Idempotent hit for notification %s (status=%s)",
+                        existing.id,
+                        existing.status,
+                    )
+                    response = Response(
+                        {
+                            "notification_id": str(existing.id),
+                            "status": existing.status,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                self._log_response(
+                    request,
+                    started_at,
+                    response.status_code,
+                    extra={"notification_id": str(existing.id)},
+                )
+                return response
+
+        if settings.RATE_LIMIT_ENABLED:
+            limiter = RateLimiter(
+                max_requests=settings.RATE_LIMIT_MAX_REQUESTS,
+                window=settings.RATE_LIMIT_WINDOW_SECONDS,
+            )
+            rate_key = f"{scope}:{data['user_id']}:{channel}"
+            if not limiter.is_allowed(rate_key):
+                logger.warning(
+                    "Rate limit exceeded for user=%s channel=%s",
+                    data["user_id"],
+                    channel,
+                )
+                response = Response(
+                    {"error": "Rate limit exceeded. Try again later."},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                    headers={"Retry-After": str(limiter.retry_after())},
+                )
+                self._log_response(
+                    request,
+                    started_at,
+                    response.status_code,
+                    extra={"user_id": data["user_id"], "channel": channel},
+                )
+                return response
+
+        # The unique key makes concurrent creators collapse onto one row.
+        log, created = NotificationLog.get_or_create_idempotent(
             user_id=data["user_id"],
             template=template,
             channel=channel,
             to=data["to"],
             idempotency_key=idem_key,
-            max_retries=5,  # Default
+            created_by=scope,
+            max_retries=settings.NOTIFICATION_MAX_RETRIES,
+            request_fingerprint=data["request_fingerprint"],
         )
 
-        # Check if this was an existing log (idempotent request)
-        # The serializer already checks, but create_if_not_exists handles race conditions
-        if idem_key and existing and existing.id == log.id:
-            # This is a duplicate request
-            logger.info(
-                "Idempotent hit for notification %s (status=%s)",
-                log.id,
-                log.status,
+        if not created:
+            if not _same_request(log, data=data, scope=scope):
+                response = _idempotency_conflict()
+            else:
+                logger.info(
+                    "Idempotent hit for notification %s (status=%s)",
+                    log.id,
+                    log.status,
+                )
+                response = Response(
+                    {"notification_id": str(log.id), "status": log.status},
+                    status=status.HTTP_200_OK,
+                )
+            self._log_response(
+                request,
+                started_at,
+                response.status_code,
+                extra={"notification_id": str(log.id)},
             )
-            return Response(
-                {"notification_id": str(log.id), "status": log.status},
-                status=status.HTTP_200_OK,
-            )
+            return response
 
         adapters = {
             "email": EmailAdapter(),
             "sms": SMSAdapter(),
             "push": PushAdapter(),
         }
-
-        # Basic priority routing: treat OTP-like templates as high priority
-        template_name = (template.name or "").lower()
-        if "otp" in template_name:
-            queue_name = "high_priority"
-        else:
-            queue_name = "low_priority"
-
-        if channel in adapters:
-            adapter = adapters[channel]
-            payload = {
-                "to": data["to"],
-                "subject": data.get("subject", template.subject),
-                "body": rendered_body,
-                "device_token": data.get("device_token") if channel == "push" else None,
-                "title": data.get("title", template.subject)
-                if channel == "push"
-                else None,
-                "queue": queue_name,
-            }
-            try:
-                adapter.send(str(log.id), payload)
-            except Exception as e:
-                logger.exception(
-                    "Failed to send notification via adapter for channel=%s (log=%s)",
-                    channel,
-                    log.id,
-                    exc_info=e,
-                )
-                # Log the error immediately with atomic update
-                log.atomic_update_status(
-                    "failed", error_message=str(e), next_retry_at=None
-                )
-                return Response(
-                    {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-        else:
-            logger.warning(
-                "Unsupported channel %s for notification %s; keeping notification pending",
-                channel,
-                log.id,
-            )
+        adapter = adapters.get(channel)
+        if adapter is None:  # Serializer already restricts this; defence in depth.
             log.atomic_update_status("failed", error_message="Unsupported channel")
             return Response(
-                {"error": "Unsupported channel"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Unsupported channel"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
+        payload = {
+            "to": data["to"],
+            "subject": data["rendered_subject"],
+            "body": data["rendered_body"],
+            "device_token": data.get("device_token") if channel == "push" else None,
+            "title": data["rendered_title"] if channel == "push" else None,
+            "queue": data["queue"],
+        }
+        try:
+            adapter.send(str(log.id), payload)
+        except Exception:
+            logger.exception(
+                "Failed to enqueue notification %s for channel=%s", log.id, channel
+            )
+            log.atomic_update_status(
+                "failed",
+                error_message="Delivery queue unavailable",
+                next_retry_at=None,
+            )
+            response = Response(
+                {
+                    "error": "Delivery queue unavailable. Retry with a new idempotency key."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+            self._log_response(
+                request,
+                started_at,
+                response.status_code,
+                extra={"notification_id": str(log.id)},
+            )
+            return response
+
         logger.info(
-            "Notification %s queued for channel=%s destination=%s",
+            "Notification %s queued on %s for channel=%s destination=%s",
             log.id,
-            template.channel,
+            data["queue"],
+            channel,
             log.to,
         )
         response = Response(
@@ -228,7 +278,7 @@ class SendNotificationView(APIView):
 
 
 class NotificationStatusView(APIView):
-    """Get notification status by ID."""
+    """Get notification status by ID (scoped to the caller)."""
 
     @extend_schema(
         tags=["Notifications"],
@@ -241,45 +291,49 @@ class NotificationStatusView(APIView):
     )
     def get(self, request, notification_id):
         try:
-            log = NotificationLog.objects.get(id=notification_id)
-            return Response(
-                {
-                    "notification_id": str(log.id),
-                    "user_id": log.user_id,
-                    "template_name": log.template.name,
-                    "channel": log.channel,
-                    "to": log.to,
-                    "status": log.status,
-                    "attempts": log.attempts,
-                    "max_retries": log.max_retries,
-                    "created_at": log.created_at.isoformat(),
-                    "sent_at": log.sent_at.isoformat() if log.sent_at else None,
-                    "last_attempt_at": log.last_attempt_at.isoformat()
-                    if log.last_attempt_at
-                    else None,
-                    "next_retry_at": log.next_retry_at.isoformat()
-                    if log.next_retry_at
-                    else None,
-                    "error_message": log.error_message,
-                    "provider_config": log.provider_config,
-                    "idempotency_key": log.idempotency_key,
-                },
-                status=status.HTTP_200_OK,
+            log = (
+                scoped_logs(request).select_related("template").get(id=notification_id)
             )
         except NotificationLog.DoesNotExist:
             return Response(
                 {"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
+        return Response(
+            {
+                "notification_id": str(log.id),
+                "user_id": log.user_id,
+                "template_name": log.template.name,
+                "channel": log.channel,
+                "to": log.to,
+                "status": log.status,
+                "attempts": log.attempts,
+                "max_retries": log.max_retries,
+                "created_at": log.created_at.isoformat(),
+                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+                "last_attempt_at": log.last_attempt_at.isoformat()
+                if log.last_attempt_at
+                else None,
+                "next_retry_at": log.next_retry_at.isoformat()
+                if log.next_retry_at
+                else None,
+                "error_message": log.error_message,
+                "provider_config": log.provider_config,
+                "idempotency_key": log.idempotency_key,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class NotificationListView(APIView):
-    """List all notifications with optional filters."""
+    """List notifications visible to the caller with optional filters."""
 
     @extend_schema(
         tags=["Notifications"],
         summary="List notifications",
-        description="List all notifications with optional filtering by user, channel, and status. "
-        "Results are ordered by creation time (newest first).",
+        description="List notifications visible to the authenticated principal, "
+        "with optional filtering by user, channel, and status. Results are ordered "
+        "by creation time (newest first).",
         parameters=[
             OpenApiParameter(
                 name="user_id",
@@ -299,14 +353,14 @@ class NotificationListView(APIView):
                 name="status",
                 type=str,
                 location=OpenApiParameter.QUERY,
-                description="Filter by status (pending, sent, failed, retrying)",
+                description="Filter by status (pending, sending, sent, failed, retrying)",
                 required=False,
             ),
             OpenApiParameter(
                 name="limit",
                 type=int,
                 location=OpenApiParameter.QUERY,
-                description="Maximum number of results (default: 50)",
+                description="Maximum number of results (1-200, default: 50)",
                 required=False,
             ),
         ]
@@ -315,26 +369,24 @@ class NotificationListView(APIView):
         responses={200: NotificationListResponseSerializer},
     )
     def get(self, request):
-        logs = NotificationLog.objects.all().order_by("-created_at")
+        query = NotificationListQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        filters = query.validated_data
 
-        # Optional filters
-        user_id = request.query_params.get("user_id")
-        channel = request.query_params.get("channel")
-        status_filter = request.query_params.get("status")
-        limit = int(request.query_params.get("limit", 50))
+        logs = scoped_logs(request).select_related("template")
+        if filters.get("user_id"):
+            logs = logs.filter(user_id=filters["user_id"])
+        if filters.get("channel"):
+            logs = logs.filter(channel=filters["channel"])
+        if filters.get("status"):
+            logs = logs.filter(status=filters["status"])
 
-        if user_id:
-            logs = logs.filter(user_id=user_id)
-        if channel:
-            logs = logs.filter(channel=channel)
-        if status_filter:
-            logs = logs.filter(status=status_filter)
-
-        logs = logs[:limit]
+        total = logs.count()
+        page = logs.order_by("-created_at")[: filters["limit"]]
 
         return Response(
             {
-                "count": len(logs),
+                "count": total,
                 "results": [
                     {
                         "notification_id": str(log.id),
@@ -347,7 +399,7 @@ class NotificationListView(APIView):
                         "created_at": log.created_at.isoformat(),
                         "sent_at": log.sent_at.isoformat() if log.sent_at else None,
                     }
-                    for log in logs
+                    for log in page
                 ],
             },
             status=status.HTTP_200_OK,
@@ -358,16 +410,17 @@ class TemplateListView(APIView):
     """List all notification templates."""
 
     @extend_schema(
-        tags=["Templates"],
+        tags=["Notifications"],
+        operation_id="templates_list",
         summary="List templates",
         description="List all notification templates with optional filtering by channel. "
-        "Results are ordered by creation time (newest first).",
+        "Results are ordered by template name.",
         parameters=[
             OpenApiParameter(
                 name="channel",
                 type=str,
                 location=OpenApiParameter.QUERY,
-                description="Filter by channel (email, sms, push, whatsapp, in_app)",
+                description="Filter by channel (email, sms, push)",
                 required=False,
             ),
         ]
@@ -376,15 +429,20 @@ class TemplateListView(APIView):
         responses={200: TemplateListResponseSerializer},
     )
     def get(self, request):
-        templates = NotificationTemplate.objects.all().order_by("-created_at")
-        channel_filter = request.query_params.get("channel")
+        query = TemplateListQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        channel_filter = query.validated_data.get("channel")
 
+        templates = NotificationTemplate.objects.order_by("name")
         if channel_filter:
             templates = templates.filter(channel=channel_filter)
 
+        total = templates.count()
+        page = templates[:200]
+
         return Response(
             {
-                "count": len(templates),
+                "count": total,
                 "results": [
                     {
                         "id": str(template.id),
@@ -394,7 +452,7 @@ class TemplateListView(APIView):
                         "body_template": template.body_template,
                         "created_at": template.created_at.isoformat(),
                     }
-                    for template in templates
+                    for template in page
                 ],
             },
             status=status.HTTP_200_OK,
@@ -406,6 +464,7 @@ class TemplateDetailView(APIView):
 
     @extend_schema(
         tags=["Templates"],
+        operation_id="templates_retrieve",
         summary="Get template details",
         description="Retrieve the full details of a specific notification template by its UUID.",
         responses={
@@ -416,18 +475,18 @@ class TemplateDetailView(APIView):
     def get(self, request, template_id):
         try:
             template = NotificationTemplate.objects.get(id=template_id)
-            return Response(
-                {
-                    "id": str(template.id),
-                    "name": template.name,
-                    "channel": template.channel,
-                    "subject": template.subject,
-                    "body_template": template.body_template,
-                    "created_at": template.created_at.isoformat(),
-                },
-                status=status.HTTP_200_OK,
-            )
         except NotificationTemplate.DoesNotExist:
             return Response(
                 {"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND
             )
+        return Response(
+            {
+                "id": str(template.id),
+                "name": template.name,
+                "channel": template.channel,
+                "subject": template.subject,
+                "body_template": template.body_template,
+                "created_at": template.created_at.isoformat(),
+            },
+            status=status.HTTP_200_OK,
+        )
